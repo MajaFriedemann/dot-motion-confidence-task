@@ -234,7 +234,7 @@ for trial in range(gv['n_trials']):
     hf.draw_all_stimuli(win, stimuli, 0.5)
     hf.exit_q(win)
 
-    # Confidence rating on approximately a third of the trials
+    # Confidence rating on approximately a third of the trials  # MAJA - make this every trial?
     if np.random.choice([True, False, False]):
         confidence_rating = hf.get_confidence_rating(win)
 
