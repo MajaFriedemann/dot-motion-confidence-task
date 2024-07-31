@@ -139,30 +139,31 @@ def get_confidence_rating(win):
                            ticks=[0, 1, 2, 3, 4, 5],
                            labels=["50%", "", "", "", "", "100%"],
                            pos=(0, 0),
-                           size=(500, 70), units="pix", flip=True, style='slider', granularity=1, labelHeight=25)
-    slider.tickLines.sizes = (1, 70)
+                           size=(15, 2), units="deg", flip=True, style='slider', granularity=1, labelHeight=0.7)
+    slider.tickLines.sizes = (0.1, 2)
     initial_pos = random.choice(slider.ticks)  # generate a random initial position for the slider marker
     slider.markerPos = initial_pos  # set the slider marker to the initial random position
     slider_marker = visual.ShapeStim(
         win=win,
-        vertices=((0, -35), (0, 35)),
-        lineWidth=10,
+        vertices=((-0.2, -1), (0.2, -1), (0.2, 1), (-0.2, 1)),
+        lineWidth=2,
         pos=(slider.markerPos * (slider.size[0] / 5) - (slider.size[0] / 2), slider.pos[1]),
-        closeShape=False,
-        lineColor='green',
+        closeShape=True,
+        fillColor='green',
+        lineColor='green'
     )
     slider_labels = ["50%", "60%", "70%", "80%", "90%", "100%"]
-    slider_rating_txt = visual.TextStim(win=win, text=slider_labels[initial_pos], height=20, pos=(slider_marker.pos[0], -50), color='white')
+    slider_rating_txt = visual.TextStim(win=win, text=slider_labels[initial_pos], height=0.6, pos=(slider_marker.pos[0], -1.65), color='white')
     slider_question_text = visual.TextStim(
         win,
         text=f'How confident are you?',
-        height=35,
-        pos=(0, 170),
+        height=1,
+        pos=(0, 5),
         color='white',
         bold=True,
         font='Arial',
         alignText='center',
-        wrapWidth=1000
+        wrapWidth=30
     )
     while True:
         keys = event.getKeys()
@@ -173,13 +174,13 @@ def get_confidence_rating(win):
         elif 'space' in keys:
             break
         slider_marker.pos = (slider.markerPos * (slider.size[0] / 5) - (slider.size[0] / 2), slider.pos[1])
-        slider_rating_txt.pos = (slider_marker.pos[0], slider.pos[1] - 50)
+        slider_rating_txt.pos = (slider_marker.pos[0], slider.pos[1] - 1.65)
         slider_rating_txt.text = slider_labels[int(slider.markerPos)]
         stimuli = [slider, slider_rating_txt, slider_question_text, slider_marker]
         draw_all_stimuli(win, stimuli)
 
     rating = 50 + slider.markerPos * 10  # convert the marker position to the percentage rating
-    slider_marker.color = 'grey'
+    slider_marker.lineColor = 'black'
+    slider_marker.fillColor = 'black'
     draw_all_stimuli(win, stimuli, 0.5)
     return rating
-
