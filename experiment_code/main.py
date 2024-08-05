@@ -33,7 +33,7 @@ if not dlg.OK:
 
 # TASK VARIABLES
 gv = dict(
-    n_trials=50,  # number of trials
+    n_trials=10,  # number of trials
     dot_display_time=1.0,  # duration of dot display, 1 second
     inter_trial_interval=[0.5, 1.0],  # duration of inter-trial interval, uniform distribution, 0.5-1 second
     response_keys=['d', 'e'],  # keys for CW and CCW responses
