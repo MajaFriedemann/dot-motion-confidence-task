@@ -36,11 +36,12 @@ gv = dict(
     n_trials=10,  # number of trials
     dot_display_time=1.0,  # duration of dot display, 1 second
     inter_trial_interval=[0.5, 1.0],  # duration of inter-trial interval, uniform distribution, 0.5-1 second
-    response_keys=['d', 'e'],  # keys for CW and CCW responses
+    response_keys=['o', 'p'],  # keys for CW and CCW responses
     low_coherence=0.2,  # low coherence
     high_coherence=0.4,  # high coherence
     low_distance=10,  # low distance
     high_distance=30,  # high distance
+    bonus_factor=0.1  # bonus factor times correct responses
 )
 
 ###################################
@@ -59,9 +60,15 @@ info = dict(
     age=expInfo['age'],
     gender=expInfo['gender (f/m/o)'],
 
-    block_count=0,  # block counter
     trial_count=0,  # trial counter
-
+    coherence=None,  # coherence level, 'low' or 'high'
+    distance=None,  # distance level, 'low' or 'high'
+    direction=None,  # direction of motion
+    reference_direction=None,  # reference direction, 'CW' or 'CCW'
+    response=None,  # response, 'CW' or 'CCW'
+    response_time=None,  # response time
+    confidence_rating=None,  # confidence rating
+    confidence_response_time=None,  # confidence response time
 )
 
 # start a csv file for saving the participant data
@@ -132,7 +139,7 @@ dot_outline = visual.Circle(win, radius=dot_params['fieldSize'][0] / 2, edges=10
 ###################################
 # INSTRUCTIONS
 ###################################
-# WELCOME
+# Welcome
 big_txt.draw()
 instructions_txt.draw()
 win.flip()
@@ -140,9 +147,9 @@ hf.exit_q(win)
 event.waitKeys(keyList=['space'])  # show instructions until space is pressed
 event.clearEvents()
 
-# TASK REMINDER
+# Task reminder
 instructions_txt.text = ("Now you are ready for the confidence task. \n\n As you'll remember, you will see a cloud of dots moving "
-                         "in some direction. Following this, a reference direction will be indicated and your task is to decide "
+                         "in some direction. Following this, a reference direction will be indicated. Your task is to decide "
                          "whether the net direction of motion was towards the BLUE or the ORANGE side of the reference. "
                          "To make a choice, press the BLUE or the ORANGE button on the keyboard. \n\n\n\n"
                          "Press SPACE to continue.")
@@ -152,9 +159,9 @@ hf.exit_q(win)
 event.waitKeys(keyList=['space'])  # show instructions until space is pressed
 event.clearEvents()
 
-# CONFIDENCE REMINDER
+# Confidence reminder
 instructions_txt.text = ("On some trials, you will be asked to rate your confidence in your decision on a scale from 50% to 100%. \n\n"
-                         "The slider-marker will start out in a random position. Use the left and right arrow keys to move the slider and press SPACE to confirm your response. \n\n"
+                         "The slider-marker will start out in a random position. Use the response keys to move the slider and press SPACE to confirm your response. \n\n"
                          "To maximise your bonus, you must make as many correct decisions as possible and estimate your confidence as accurately as possible. \n\n\n\n"
                          "Press SPACE to begin.")
 instructions_txt.draw()
@@ -170,8 +177,10 @@ event.clearEvents()
 EEG_config.send_trigger(EEG_config.triggers['experiment_start'])
 start_time = datetime.now()
 info['start_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
+correct_responses = 0
 
 for trial in range(gv['n_trials']):
+    trial += 1
     # Set the direction, coherence, and reference direction for the trial
     direction = round(np.random.uniform(1, 360), 2)  # randomly choose motion direction
 
@@ -228,6 +237,8 @@ for trial in range(gv['n_trials']):
     elif response == gv['response_keys'][1]:
         chosen_direction = 'CCW'
         fixation.color = 'orange'
+    if chosen_direction == reference_direction:
+        correct_responses += 1
 
     # Response visual feedback
     stimuli = [dot_outline, arc_CW, arc_CCW, ref_line, fixation]
@@ -235,14 +246,41 @@ for trial in range(gv['n_trials']):
     hf.exit_q(win)
 
     # Confidence rating on approximately a third of the trials  # MAJA - make this every trial?
+    confidence_rating = None
+    confidence_response_time = None
     if np.random.choice([True, False, False]):
-        confidence_rating = hf.get_confidence_rating(win)
+        confidence_rating, confidence_response_time = hf.get_confidence_rating(win)
 
     # Clear the stimuli
     fixation.color = 'white'
     win.flip()
     hf.exit_q(win)
     core.wait(1)
+
+    # Save the data
+    info['trial_count'] = trial
+    info['coherence'] = coherence
+    info['distance'] = distance
+    info['direction'] = direction
+    info['reference_direction'] = reference_direction
+    info['response'] = chosen_direction
+    info['response_time'] = response_time
+    info['confidence_rating'] = confidence_rating
+    info['confidence_response_time'] = confidence_response_time
+    datafile.write(','.join([str(info[var]) for var in log_vars]) + '\n')
+    datafile.flush()
+
+# END
+info['end_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
+bonus = correct_responses * gv['bonus_factor']
+instructions_txt.text = ("Well done! You have completed the task. \n\n"
+                         f"You made {correct_responses} correct responses out of {gv['n_trials']} trials. \n\n"
+                         f"Your bonus is £{bonus}. \n\n")
+instructions_txt.draw()
+win.flip()
+hf.exit_q(win)
+event.waitKeys(keyList=['space'])  # show instructions until space is pressed
+event.clearEvents()
 
 # Close window
 win.close()

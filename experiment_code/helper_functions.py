@@ -8,6 +8,7 @@ Maja Friedemann 2024
 # IMPORT PACKAGES
 ###################################
 import random
+import time
 from psychopy import gui, visual, core, data, event
 import pandas as pd
 import numpy as np
@@ -131,9 +132,9 @@ def draw_arc(win, radius, start_deg, end_deg, color, pos=(0, 0)):
     return visual.ShapeStim(win, vertices=vertices, closeShape=False, lineColor=color, pos=pos, lineWidth=6)
 
 
-def get_confidence_rating(win):
+def get_confidence_rating(win, gv):
     """
-    Confidence rating
+    Confidence rating with response time
     """
     slider = visual.Slider(win,
                            ticks=[0, 1, 2, 3, 4, 5],
@@ -153,7 +154,8 @@ def get_confidence_rating(win):
         lineColor='green'
     )
     slider_labels = ["50%", "60%", "70%", "80%", "90%", "100%"]
-    slider_rating_txt = visual.TextStim(win=win, text=slider_labels[initial_pos], height=0.6, pos=(slider_marker.pos[0], -1.65), color='white')
+    slider_rating_txt = visual.TextStim(win=win, text=slider_labels[initial_pos], height=0.6,
+                                        pos=(slider_marker.pos[0], -1.65), color='white')
     slider_question_text = visual.TextStim(
         win,
         text=f'How confident are you?',
@@ -165,11 +167,14 @@ def get_confidence_rating(win):
         alignText='center',
         wrapWidth=30
     )
+
+    start_time = time.time()  # Record the start time
+
     while True:
         keys = event.getKeys()
-        if 'left' in keys:
+        if gv['response_keys'][0] in keys:
             slider.markerPos = max(slider.markerPos - 1, 0)
-        elif 'right' in keys:
+        elif gv['response_keys'][1] in keys:
             slider.markerPos = min(slider.markerPos + 1, 5)
         elif 'space' in keys:
             break
@@ -179,8 +184,13 @@ def get_confidence_rating(win):
         stimuli = [slider, slider_rating_txt, slider_question_text, slider_marker]
         draw_all_stimuli(win, stimuli)
 
+    end_time = time.time()  # Record the end time
+    response_time = end_time - start_time  # Calculate the response time
+
     rating = 50 + slider.markerPos * 10  # convert the marker position to the percentage rating
     slider_marker.lineColor = 'black'
     slider_marker.fillColor = 'black'
     draw_all_stimuli(win, stimuli, 0.5)
-    return rating
+
+    return rating, response_time  # Return both the rating and the response time
+
