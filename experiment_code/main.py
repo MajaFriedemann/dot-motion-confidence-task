@@ -249,7 +249,7 @@ for trial in range(gv['n_trials']):
     confidence_rating = None
     confidence_response_time = None
     if np.random.choice([True, False, False]):
-        confidence_rating, confidence_response_time = hf.get_confidence_rating(win)
+        confidence_rating, confidence_response_time = hf.get_confidence_rating(win, gv)
 
     # Clear the stimuli
     fixation.color = 'white'

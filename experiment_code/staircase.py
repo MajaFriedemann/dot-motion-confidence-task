@@ -33,16 +33,21 @@ if not dlg.OK:
 
 # TASK VARIABLES
 gv = dict(
-    n_trials=10,  # number of trials
+    n_blocks=5,  # number of alternating calibration blocks
+    n_trials_per_block=10,  # number of trials per block
     dot_display_time=1.0,  # duration of dot display, 1 second
     inter_trial_interval=[0.5, 1.0],  # duration of inter-trial interval, uniform distribution, 0.5-1 second
     response_keys=['o', 'p'],  # keys for CW and CCW responses
-    initial_coherence=0.3,  # initial coherence
-    low_coherence=None,  # low coherence
-    high_coherence=None,  # high coherence
-    initial_distance=20,  # initial distance
+    low_coherence=None,  # low coherence (0.5 * medium coherence)
+    high_coherence=None,  # high coherence (2 * medium coherence)
     low_distance=None,  # low distance
     high_distance=None,  # high distance
+
+    # staircase parameters
+    medium_coherence=0.3,  # medium coherence ((low_coherence+high_coherence)/2) initialised at 0.3
+    medium_distance=20,  # initial distance ((low_distance+high_distance)/2) initialised at 20
+    coherence_step=0.01,  # step size for staircase
+    distance_step=1,  # step size for staircase
 )
 
 ###################################
@@ -70,6 +75,12 @@ info = dict(
     response_time=None,  # response time
     confidence_rating=None,  # confidence rating
     confidence_response_time=None,  # confidence response time
+
+    block_type=None,  # block type, 'coherence' or 'distance'
+    low_coherence=None,
+    high_coherence=None,
+    low_distance=None,
+    high_distance=None
 )
 
 # start a csv file for saving the participant data
@@ -179,97 +190,126 @@ EEG_config.send_trigger(EEG_config.triggers['experiment_start'])
 start_time = datetime.now()
 info['start_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
 correct_responses = 0
+correct_count = 0
+is_coherence_block = False  # start with coherence calibration block (gets changed at the start of the first block)
 
-for trial in range(gv['n_trials']):
-    trial += 1
-    # Set the direction, coherence, and reference direction for the trial
-    direction = round(np.random.uniform(1, 360), 2)  # randomly choose motion direction
+for block in range(gv['n_blocks']):
+    is_coherence_block = not is_coherence_block  # alternate between coherence and distance blocks
 
-    if np.random.choice([True, False]):  # randomly choose low or high coherence
-        coherence = gv['high_coherence']  # this needs to be calibrated to the participant
-    else:
-        coherence = gv['low_coherence']
+    for trial in range(gv['n_trials_per_block']):
+        trial += 1
+        # Set the direction, coherence, and reference direction for the trial
+        direction = round(np.random.uniform(1, 360), 2)  # randomly choose motion direction
 
-    if np.random.choice([True, False]):  # randomly choose low or high distance
-        distance = gv['high_distance']  # this needs to be calibrated to the participant
-    else:
-        distance = gv['low_distance']
+        if is_coherence_block:
+            coherence = gv['medium_coherence']
+            distance = gv['medium_distance']
+        else:
+            if np.random.choice([True, False]):  # randomly choose low or high distance
+                distance = gv['high_distance']
+            else:
+                distance = gv['low_distance']
+            coherence = gv['high_coherence'] if distance == gv['low_distance'] else gv['low_coherence']
 
-    if np.random.choice([True, False]):  # randomly choose CW or CCW
-        reference_direction = 'CW'
-        reference = (direction + distance) % 360
-    else:
-        reference_direction = 'CCW'
-        reference = (direction - distance) % 360
+        if np.random.choice([True, False]):  # randomly choose CW or CCW
+            reference_direction = 'CW'
+            reference = (direction + distance) % 360
+        else:
+            reference_direction = 'CCW'
+            reference = (direction - distance) % 360
 
-    print(f"Trial {trial}: direction={direction}, coherence={coherence}, distance={distance}, reference={reference}")
+        print(f"Trial {trial}: direction={direction}, coherence={coherence}, distance={distance}, reference={reference}")
 
-    # Show fixation cross
-    stimuli = [dot_outline, fixation]
-    delay = np.random.uniform(gv['inter_trial_interval'][0], gv['inter_trial_interval'][1])
-    hf.draw_all_stimuli(win, stimuli, delay)
-    hf.exit_q(win)
+        # Show fixation cross
+        stimuli = [dot_outline, fixation]
+        delay = np.random.uniform(gv['inter_trial_interval'][0], gv['inter_trial_interval'][1])
+        hf.draw_all_stimuli(win, stimuli, delay)
+        hf.exit_q(win)
 
-    # Show dots
-    dots = hf.create_dot_motion_stimulus(win, dot_params, direction, coherence)
-    clock.reset()
-    while clock.getTime() < gv['dot_display_time']:
-        stimuli = [dot_outline, dots, no_dot_zone, fixation]
+        # Show dots
+        dots = hf.create_dot_motion_stimulus(win, dot_params, direction, coherence)
+        clock.reset()
+        while clock.getTime() < gv['dot_display_time']:
+            stimuli = [dot_outline, dots, no_dot_zone, fixation]
+            hf.draw_all_stimuli(win, stimuli)
+            hf.exit_q(win)
+
+        # Show reference direction
+        arc_CW = hf.draw_arc(win, dot_params['fieldSize'][0] / 2, reference, reference - 90, 'blue')
+        arc_CCW = hf.draw_arc(win, dot_params['fieldSize'][0] / 2, reference, reference + 90, 'orange')
+        ref_line = visual.Line(win, start=((dot_params['fieldSize'][0] / 2 - 1) * np.cos(np.deg2rad(reference)),
+                                           (dot_params['fieldSize'][0] / 2 - 1) * np.sin(np.deg2rad(reference))),
+                               end=((dot_params['fieldSize'][0] / 2 + 1) * np.cos(np.deg2rad(reference)),
+                                    (dot_params['fieldSize'][0] / 2 + 1) * np.sin(np.deg2rad(reference))),
+                               lineColor='white', lineWidth=10)
+        stimuli = [dot_outline, arc_CW, arc_CCW, ref_line, fixation]
         hf.draw_all_stimuli(win, stimuli)
         hf.exit_q(win)
 
-    # Show reference direction
-    arc_CW = hf.draw_arc(win, dot_params['fieldSize'][0] / 2, reference, reference - 90, 'blue')
-    arc_CCW = hf.draw_arc(win, dot_params['fieldSize'][0] / 2, reference, reference + 90, 'orange')
-    ref_line = visual.Line(win, start=((dot_params['fieldSize'][0] / 2 - 1) * np.cos(np.deg2rad(reference)),
-                                       (dot_params['fieldSize'][0] / 2 - 1) * np.sin(np.deg2rad(reference))),
-                           end=((dot_params['fieldSize'][0] / 2 + 1) * np.cos(np.deg2rad(reference)),
-                                (dot_params['fieldSize'][0] / 2 + 1) * np.sin(np.deg2rad(reference))),
-                           lineColor='white', lineWidth=10)
-    stimuli = [dot_outline, arc_CW, arc_CCW, ref_line, fixation]
-    hf.draw_all_stimuli(win, stimuli)
-    hf.exit_q(win)
+        # Wait for participant response
+        response, response_time = hf.check_key_press(win, gv['response_keys'])
+        if response == gv['response_keys'][0]:
+            chosen_direction = 'CW'
+            fixation.color = 'blue'
+        elif response == gv['response_keys'][1]:
+            chosen_direction = 'CCW'
+            fixation.color = 'orange'
+        if chosen_direction == reference_direction:
+            correct_responses += 1
+            correct_count += 1
+            if correct_count == 2:  # two-down-one-up rule
+                correct_count = 0
+                if is_coherence_block:
+                    gv['medium_coherence'] = max(gv['medium_coherence'] - gv['coherence_step'], 0.01)
+                else:
+                    gv['medium_distance'] = max(gv['medium_distance'] - gv['distance_step'], 1)
+        else:
+            correct_count = 0
+            if is_coherence_block:
+                gv['medium_coherence'] = min(gv['medium_coherence'] + gv['coherence_step'], 1)
+            else:
+                gv['medium_distance'] = min(gv['medium_distance'] + gv['distance_step'], 50)
 
-    # Wait for participant response
-    response, response_time = hf.check_key_press(win, gv['response_keys'])
-    if response == gv['response_keys'][0]:
-        chosen_direction = 'CW'
-        fixation.color = 'blue'
-    elif response == gv['response_keys'][1]:
-        chosen_direction = 'CCW'
-        fixation.color = 'orange'
-    if chosen_direction == reference_direction:
-        correct_responses += 1
+        # Adjust low and high coherence and distance based on the new medium values
+        gv['low_coherence'] = gv['medium_coherence'] * 0.5
+        gv['high_coherence'] = gv['medium_coherence'] * 2
+        gv['low_distance'] = gv['medium_distance'] * 0.5
+        gv['high_distance'] = gv['medium_distance'] * 2
 
-    # Response visual feedback
-    stimuli = [dot_outline, arc_CW, arc_CCW, ref_line, fixation]
-    hf.draw_all_stimuli(win, stimuli, 0.5)
-    hf.exit_q(win)
+        # Response visual feedback
+        stimuli = [dot_outline, arc_CW, arc_CCW, ref_line, fixation]
+        hf.draw_all_stimuli(win, stimuli, 0.5)
+        hf.exit_q(win)
 
-    # Confidence rating on approximately a third of the trials  # MAJA - make this every trial?
-    confidence_rating = None
-    confidence_response_time = None
-    if np.random.choice([True, False, False]):
-        confidence_rating, confidence_response_time = hf.get_confidence_rating(win)
+        # Confidence rating on approximately a third of the trials  # MAJA - make this every trial?
+        confidence_rating = None
+        confidence_response_time = None
+        if np.random.choice([True, False, False]):
+            confidence_rating, confidence_response_time = hf.get_confidence_rating(win, gv)
 
-    # Clear the stimuli
-    fixation.color = 'white'
-    win.flip()
-    hf.exit_q(win)
-    core.wait(1)
+        # Clear the stimuli
+        fixation.color = 'white'
+        win.flip()
+        hf.exit_q(win)
+        core.wait(1)
 
-    # Save the data
-    info['trial_count'] = trial
-    info['coherence'] = coherence
-    info['distance'] = distance
-    info['direction'] = direction
-    info['reference_direction'] = reference_direction
-    info['response'] = chosen_direction
-    info['response_time'] = response_time
-    info['confidence_rating'] = confidence_rating
-    info['confidence_response_time'] = confidence_response_time
-    datafile.write(','.join([str(info[var]) for var in log_vars]) + '\n')
-    datafile.flush()
+        # Save the data
+        info['trial_count'] = trial
+        info['coherence'] = coherence
+        info['distance'] = distance
+        info['direction'] = direction
+        info['reference_direction'] = reference_direction
+        info['response'] = chosen_direction
+        info['response_time'] = response_time
+        info['confidence_rating'] = confidence_rating
+        info['confidence_response_time'] = confidence_response_time
+        info['block_type'] = 'coherence' if is_coherence_block else 'distance'
+        info['low_coherence'] = gv['low_coherence']
+        info['high_coherence'] = gv['high_coherence']
+        info['low_distance'] = gv['low_distance']
+        info['high_distance'] = gv['high_distance']
+        datafile.write(','.join([str(info[var]) for var in log_vars]) + '\n')
+        datafile.flush()
 
 # END
 info['end_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
