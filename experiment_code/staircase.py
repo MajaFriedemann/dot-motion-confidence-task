@@ -1,6 +1,4 @@
-###################################
 # IMPORT PACKAGES
-###################################
 import csv
 import json
 import numpy as np
@@ -14,9 +12,7 @@ import ctypes  # for hiding the mouse cursor on Windows
 
 print('Reminder: Press Q to quit.')
 
-###################################
 # SESSION INFO
-###################################
 # PARTICIPANT INFO POP-UP
 expName = 'confidence-pgACC-TUS-staircase'
 curecID = 'R88533/RE002'
@@ -50,10 +46,8 @@ gv = dict(
     distance_step=1,  # step size for staircase
 )
 
-###################################
 # DATA SAVING
-###################################
-# variables in info will be saved as participant data
+# Variables in info will be saved as participant data
 info = dict(
     expName=expName,
     curec_ID=curecID,
@@ -81,7 +75,7 @@ info = dict(
     high_distance=None
 )
 
-# start a csv file for saving the participant data
+# Start a CSV file for saving the participant data
 log_vars = list(info.keys())
 if not os.path.exists('data'):
     os.mkdir('data')
@@ -90,9 +84,7 @@ datafile = open(filename + '.csv', 'w')
 datafile.write(','.join(log_vars) + '\n')
 datafile.flush()
 
-############################################
 # SET UP WINDOW, MOUSE, EEG TRIGGERS, CLOCK
-############################################
 # WINDOW
 mon = monitors.Monitor('maja_dell_1')
 win = visual.Window(
@@ -125,9 +117,7 @@ EEG_config = hf.EEGConfig(triggers, send_triggers)
 # CLOCK
 clock = core.Clock()
 
-###################################
 # CREATE STIMULI
-###################################
 big_txt = visual.TextStim(win=win, text='Welcome!', height=2, pos=[0, 3], color='white', wrapWidth=20, font='Monospace')
 instructions_txt = visual.TextStim(win=win, text="\n\n\n\n\n\n Press SPACE to start.", height=1, pos=[0, 2], wrapWidth=30, color='white', font='Monospace')
 instructions_top_txt = visual.TextStim(win=win, text="Instructions", height=1, pos=[0, 7.5], wrapWidth=30, color='white', font='Monospace')
@@ -146,9 +136,7 @@ fixation = visual.TextStim(win, text='+', height=1.5, color='white')
 no_dot_zone = visual.Circle(win, radius=0.5, edges=100, fillColor=(0.001, 0.001, 0.001))  # circle around fixation cross
 dot_outline = visual.Circle(win, radius=dot_params['fieldSize'][0] / 2, edges=100, lineColor='white', lineWidth=5, fillColor=None)
 
-###################################
 # INSTRUCTIONS
-###################################
 # Welcome
 big_txt.draw()
 instructions_txt.draw()
@@ -180,41 +168,41 @@ hf.exit_q(win)
 event.waitKeys(keyList=['space'])  # show instructions until space is pressed
 event.clearEvents()
 
-
-###################################
 # TASK
-###################################
 EEG_config.send_trigger(EEG_config.triggers['experiment_start'])
 start_time = datetime.now()
 info['start_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
 correct_responses = 0
 correct_count = 0
-is_coherence_block = False  # start with coherence calibration block (gets changed at the start of the first block)
+is_coherence_block = False  # Start with coherence calibration block (gets changed at the start of the first block)
 
 for block in range(gv['n_blocks']):
-    is_coherence_block = not is_coherence_block  # alternate between coherence and distance blocks
+    is_coherence_block = not is_coherence_block  # Alternate between coherence and distance blocks
 
     for trial in range(gv['n_trials_per_block']):
         trial += 1
         # Set the direction, coherence, and reference direction for the trial
-        direction = round(np.random.uniform(1, 360), 2)  # randomly choose motion direction
+        direction = round(np.random.uniform(1, 360), 2)  # Randomly choose motion direction
 
         if is_coherence_block:
-            coherence = gv['medium_coherence']
-            distance = gv['medium_distance']
+            coherence = gv['medium_coherence']  # Use medium coherence for coherence blocks
+            distance = gv['medium_distance']  # Use medium distance for coherence blocks
         else:
-            if np.random.choice([True, False]):  # randomly choose low or high distance
+            # For distance blocks, randomly choose low or high distance
+            if np.random.choice([True, False]):
                 distance = gv['high_distance']
             else:
                 distance = gv['low_distance']
+            # Use corresponding coherence level based on chosen distance
             coherence = gv['high_coherence'] if distance == gv['low_distance'] else gv['low_coherence']
 
-        if np.random.choice([True, False]):  # randomly choose CW or CCW
+        # Randomly determine if the reference direction is clockwise (CW) or counterclockwise (CCW)
+        if np.random.choice([True, False]):
             reference_direction = 'CW'
-            reference = (direction + distance) % 360
+            reference = (direction + distance) % 360  # Calculate reference direction for CW
         else:
             reference_direction = 'CCW'
-            reference = (direction - distance) % 360
+            reference = (direction - distance) % 360  # Calculate reference direction for CCW
 
         print(f"Trial {trial}: direction={direction}, coherence={coherence}, distance={distance}, reference={reference}")
 
@@ -248,24 +236,32 @@ for block in range(gv['n_blocks']):
         response, response_time = hf.check_key_press(win, gv['response_keys'])
         if response == gv['response_keys'][0]:
             chosen_direction = 'CW'
-            fixation.color = 'blue'
+            fixation.color = 'blue'  # Feedback: Fixation cross turns blue for CW
         elif response == gv['response_keys'][1]:
             chosen_direction = 'CCW'
-            fixation.color = 'orange'
+            fixation.color = 'orange'  # Feedback: Fixation cross turns orange for CCW
+        # Staircasing procedure
+        # If the participant's response is correct
         if chosen_direction == reference_direction:
             correct_responses += 1
             correct_count += 1
-            if correct_count == 2:  # two-down-one-up rule
+            # Apply the two-down-one-up rule
+            if correct_count == 2:
                 correct_count = 0
                 if is_coherence_block:
+                    # Decrease medium coherence if in a coherence block
                     gv['medium_coherence'] = max(gv['medium_coherence'] - gv['coherence_step'], 0.01)
                 else:
+                    # Decrease medium distance if in a distance block
                     gv['medium_distance'] = max(gv['medium_distance'] - gv['distance_step'], 1)
         else:
+            # If the response is incorrect, reset correct count and increase the corresponding staircase variable
             correct_count = 0
             if is_coherence_block:
+                # Increase medium coherence if in a coherence block
                 gv['medium_coherence'] = min(gv['medium_coherence'] + gv['coherence_step'], 1)
             else:
+                # Increase medium distance if in a distance block
                 gv['medium_distance'] = min(gv['medium_distance'] + gv['distance_step'], 50)
 
         # Adjust low and high coherence and distance based on the new medium values
