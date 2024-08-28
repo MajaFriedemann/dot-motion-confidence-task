@@ -1,0 +1,5 @@
+expName,curec_ID,session_nr,date,start_time,end_time,participant,age,gender,trial_count,coherence,distance,direction,reference_direction,response,response_time,confidence_rating,confidence_response_time,block_type,low_coherence,high_coherence,low_distance,high_distance
+confidence-pgACC-TUS-staircase,R88533/RE002,0,2024-08-28_14h40.13.078,2024-08-28 14:40:18,None,999,,,1,0.3,20,222.42,CCW,CCW,20.90057129994966,None,None,coherence,0.15,0.6,10.0,40
+confidence-pgACC-TUS-staircase,R88533/RE002,0,2024-08-28_14h40.13.078,2024-08-28 14:40:18,None,999,,,2,0.3,20,140.13,CW,CW,25.66705729998648,80,2.5221927165985107,coherence,0.145,0.58,10.0,40
+confidence-pgACC-TUS-staircase,R88533/RE002,0,2024-08-28_14h40.13.078,2024-08-28 14:40:18,None,999,,,3,0.29,20,188.24,CCW,CCW,33.779122399981134,70,6.499901533126831,coherence,0.145,0.58,10.0,40
+confidence-pgACC-TUS-staircase,R88533/RE002,0,2024-08-28_14h40.13.078,2024-08-28 14:40:18,None,999,,,4,0.29,20,66.97,CW,CW,46.53765660000499,None,None,coherence,0.13999999999999999,0.5599999999999999,10.0,40

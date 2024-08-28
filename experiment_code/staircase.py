@@ -33,8 +33,8 @@ if not dlg.OK:
 
 # TASK VARIABLES
 gv = dict(
-    n_blocks=5,  # number of alternating calibration blocks
-    n_trials_per_block=10,  # number of trials per block
+    n_blocks=4,  # number of alternating calibration blocks
+    n_trials_per_block=6,  # number of trials per block
     dot_display_time=1.0,  # duration of dot display, 1 second
     inter_trial_interval=[0.5, 1.0],  # duration of inter-trial interval, uniform distribution, 0.5-1 second
     response_keys=['o', 'p'],  # keys for CW and CCW responses
@@ -73,8 +73,6 @@ info = dict(
     reference_direction=None,  # reference direction, 'CW' or 'CCW'
     response=None,  # response, 'CW' or 'CCW'
     response_time=None,  # response time
-    confidence_rating=None,  # confidence rating
-    confidence_response_time=None,  # confidence response time
 
     block_type=None,  # block type, 'coherence' or 'distance'
     low_coherence=None,
@@ -281,12 +279,6 @@ for block in range(gv['n_blocks']):
         hf.draw_all_stimuli(win, stimuli, 0.5)
         hf.exit_q(win)
 
-        # Confidence rating on approximately a third of the trials  # MAJA - make this every trial?
-        confidence_rating = None
-        confidence_response_time = None
-        if np.random.choice([True, False, False]):
-            confidence_rating, confidence_response_time = hf.get_confidence_rating(win, gv)
-
         # Clear the stimuli
         fixation.color = 'white'
         win.flip()
@@ -301,8 +293,6 @@ for block in range(gv['n_blocks']):
         info['reference_direction'] = reference_direction
         info['response'] = chosen_direction
         info['response_time'] = response_time
-        info['confidence_rating'] = confidence_rating
-        info['confidence_response_time'] = confidence_response_time
         info['block_type'] = 'coherence' if is_coherence_block else 'distance'
         info['low_coherence'] = gv['low_coherence']
         info['high_coherence'] = gv['high_coherence']
@@ -313,8 +303,7 @@ for block in range(gv['n_blocks']):
 
 # END
 info['end_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
-instructions_txt.text = ("Well done! You have completed the task. \n\n"
-                         f"You made {correct_responses} correct responses out of {gv['n_trials']} trials. \n\n")
+instructions_txt.text = ("Well done! You have completed the task. \n\n")
 instructions_txt.draw()
 win.flip()
 hf.exit_q(win)
