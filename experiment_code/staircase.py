@@ -1,4 +1,6 @@
+###################################
 # IMPORT PACKAGES
+###################################
 import csv
 import json
 import numpy as np
@@ -12,7 +14,9 @@ import ctypes  # for hiding the mouse cursor on Windows
 
 print('Reminder: Press Q to quit.')
 
+###################################
 # SESSION INFO
+###################################
 # PARTICIPANT INFO POP-UP
 expName = 'confidence-pgACC-TUS-staircase'
 curecID = 'R88533/RE002'
@@ -46,7 +50,9 @@ gv = dict(
     distance_step=1,  # step size for staircase
 )
 
+###################################
 # DATA SAVING
+###################################
 # Variables in info will be saved as participant data
 info = dict(
     expName=expName,
@@ -84,7 +90,9 @@ datafile = open(filename + '.csv', 'w')
 datafile.write(','.join(log_vars) + '\n')
 datafile.flush()
 
+###################################
 # SET UP WINDOW, MOUSE, EEG TRIGGERS, CLOCK
+###################################
 # WINDOW
 mon = monitors.Monitor('maja_dell_1')
 win = visual.Window(
@@ -117,7 +125,9 @@ EEG_config = hf.EEGConfig(triggers, send_triggers)
 # CLOCK
 clock = core.Clock()
 
+###################################
 # CREATE STIMULI
+###################################
 big_txt = visual.TextStim(win=win, text='Welcome!', height=2, pos=[0, 3], color='white', wrapWidth=20, font='Monospace')
 instructions_txt = visual.TextStim(win=win, text="\n\n\n\n\n\n Press SPACE to start.", height=1, pos=[0, 2], wrapWidth=30, color='white', font='Monospace')
 instructions_top_txt = visual.TextStim(win=win, text="Instructions", height=1, pos=[0, 7.5], wrapWidth=30, color='white', font='Monospace')
@@ -136,7 +146,9 @@ fixation = visual.TextStim(win, text='+', height=1.5, color='white')
 no_dot_zone = visual.Circle(win, radius=0.5, edges=100, fillColor=(0.001, 0.001, 0.001))  # circle around fixation cross
 dot_outline = visual.Circle(win, radius=dot_params['fieldSize'][0] / 2, edges=100, lineColor='white', lineWidth=5, fillColor=None)
 
+###################################
 # INSTRUCTIONS
+###################################
 # Welcome
 big_txt.draw()
 instructions_txt.draw()
@@ -168,7 +180,9 @@ hf.exit_q(win)
 event.waitKeys(keyList=['space'])  # show instructions until space is pressed
 event.clearEvents()
 
+###################################
 # TASK
+###################################
 EEG_config.send_trigger(EEG_config.triggers['experiment_start'])
 start_time = datetime.now()
 info['start_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
