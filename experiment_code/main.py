@@ -33,7 +33,7 @@ if not dlg.OK:
 
 # TASK VARIABLES
 gv = dict(
-    n_trials=10,  # number of trials
+    n_trials=300,  # number of trials - 300
     dot_display_time=1.0,  # duration of dot display, 1 second
     inter_trial_interval=[0.5, 1.0],  # duration of inter-trial interval, uniform distribution, 0.5-1 second
     response_keys=['o', 'p'],  # keys for CW and CCW responses
@@ -144,31 +144,37 @@ big_txt.draw()
 instructions_txt.draw()
 win.flip()
 hf.exit_q(win)
-event.waitKeys(keyList=['space'])  # show instructions until space is pressed
+event.waitKeys(keyList=['space'])  # Show instructions until SPACE is pressed
 event.clearEvents()
 
 # Task reminder
-instructions_txt.text = ("Now you are ready for the confidence task. \n\n As you'll remember, you will see a cloud of dots moving "
-                         "in some direction. Following this, a reference direction will be indicated. Your task is to decide "
-                         "whether the net direction of motion was towards the BLUE or the ORANGE side of the reference. "
-                         "To make a choice, press the BLUE or the ORANGE button on the keyboard. \n\n\n\n"
-                         "Press SPACE to continue.")
+instructions_txt.text = (
+    "You are now ready for the confidence task.\n\n"
+    "As a reminder, you will see a cloud of dots moving in a certain direction. "
+    "After that, a reference direction will be shown. Your task is to decide "
+    "whether the overall direction of the dots was closer to the BLUE or the ORANGE side of the reference. "
+    "To make your choice, press the BLUE or ORANGE button on the keyboard. The fixation cross will change to the colour of your choice.\n\n\n\n"
+    "Press SPACE to continue."
+)
 instructions_txt.draw()
 win.flip()
 hf.exit_q(win)
-event.waitKeys(keyList=['space'])  # show instructions until space is pressed
+event.waitKeys(keyList=['space'])  # Show instructions until SPACE is pressed
 event.clearEvents()
 
 # Confidence reminder
-instructions_txt.text = ("On some trials, you will be asked to rate your confidence in your decision on a scale from 50% to 100%. \n\n"
-                         "The slider-marker will start out in a random position. Use the response keys to move the slider and press SPACE to confirm your response. \n\n"
-                         "To maximise your bonus, you must make as many correct decisions as possible and estimate your confidence as accurately as possible. \n\n\n\n"
-                         "Press SPACE to begin.")
+instructions_txt.text = (
+    "In some trials, you will be asked to rate your confidence in your decision on a scale from 50% to 100%.\n\n"
+    "The slider will start at a random position. Use the response keys to move the slider, and press SPACE to confirm your response.\n\n"
+    "To maximize your bonus, aim to make as many correct decisions as possible and accurately estimate your confidence.\n\n\n\n"
+    "Press SPACE to begin."
+)
 instructions_txt.draw()
 win.flip()
 hf.exit_q(win)
-event.waitKeys(keyList=['space'])  # show instructions until space is pressed
+event.waitKeys(keyList=['space'])  # Show instructions until SPACE is pressed
 event.clearEvents()
+
 
 
 ###################################

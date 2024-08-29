@@ -11,30 +11,18 @@ import time
 from psychopy import gui, visual, core, data, event, monitors
 import helper_functions as hf
 import ctypes  # for hiding the mouse cursor on Windows
+import sys
+import json
 
 print('Reminder: Press Q to quit.')
 
 ###################################
 # SESSION INFO
 ###################################
-# PARTICIPANT INFO POP-UP
-expName = 'confidence-pgACC-TUS-staircase'
-curecID = 'R88533/RE002'
-expInfo = {'participant nr': '999',
-           'eeg (y/n)': 'n',
-           'session nr': '0',
-           'age': '',
-           'gender (f/m/o)': '',
-           }
-dlg = gui.DlgFromDict(dictionary=expInfo, sortKeys=False,
-                      title=expName)
-if not dlg.OK:
-    core.quit()
-
 # TASK VARIABLES
 gv = dict(
-    n_blocks=4,  # number of alternating calibration blocks
-    n_trials_per_block=6,  # number of trials per block
+    n_blocks=8,  # number of alternating calibration blocks - 240 staircase trials in total
+    n_trials_per_block=30,  # number of trials per block
     dot_display_time=1.0,  # duration of dot display, 1 second
     inter_trial_interval=[0.5, 1.0],  # duration of inter-trial interval, uniform distribution, 0.5-1 second
     response_keys=['o', 'p'],  # keys for CW and CCW responses
@@ -54,38 +42,16 @@ gv = dict(
 # DATA SAVING
 ###################################
 # Variables in info will be saved as participant data
-info = dict(
-    expName=expName,
-    curec_ID=curecID,
-    session_nr=expInfo['session nr'],
-    date=data.getDateStr(),
-    start_time=None,
-    end_time=None,
-
-    participant=expInfo['participant nr'],
-    age=expInfo['age'],
-    gender=expInfo['gender (f/m/o)'],
-
-    trial_count=0,  # trial counter
-    coherence=None,  # coherence level, 'low' or 'high'
-    distance=None,  # distance level, 'low' or 'high'
-    direction=None,  # direction of motion
-    reference_direction=None,  # reference direction, 'CW' or 'CCW'
-    response=None,  # response, 'CW' or 'CCW'
-    response_time=None,  # response time
-
-    block_type=None,  # block type, 'coherence' or 'distance'
-    low_coherence=None,
-    high_coherence=None,
-    low_distance=None,
-    high_distance=None
-)
+# Retrieve the JSON string passed as an argument from training.py
+info_json = sys.argv[1]
+# Parse the JSON string back into a dictionary
+info = json.loads(info_json)
 
 # Start a CSV file for saving the participant data
 log_vars = list(info.keys())
-if not os.path.exists('data'):
-    os.mkdir('data')
-filename = os.path.join('data', '%s_%s_%s' % (info['participant'], info['session_nr'], info['date']))
+if not os.path.exists('data_staircase'):
+    os.mkdir('data_staircase')
+filename = os.path.join('data_staircase', '%s_%s_%s' % (info['participant'], info['session_nr'], info['date']))
 datafile = open(filename + '.csv', 'w')
 datafile.write(','.join(log_vars) + '\n')
 datafile.flush()
@@ -119,7 +85,7 @@ triggers = dict(
     experiment_end=20
 )
 # Create an EEGConfig object
-send_triggers = expInfo['eeg (y/n)'].lower() == 'y'
+send_triggers = info['eeg'].lower() == 'y'
 EEG_config = hf.EEGConfig(triggers, send_triggers)
 
 # CLOCK
@@ -149,19 +115,10 @@ dot_outline = visual.Circle(win, radius=dot_params['fieldSize'][0] / 2, edges=10
 ###################################
 # INSTRUCTIONS
 ###################################
-# Welcome
-big_txt.draw()
-instructions_txt.draw()
-win.flip()
-hf.exit_q(win)
-event.waitKeys(keyList=['space'])  # show instructions until space is pressed
-event.clearEvents()
-
 # Task reminder
-instructions_txt.text = ("Now you are ready for the confidence task. \n\n As you'll remember, you will see a cloud of dots moving "
-                         "in some direction. Following this, a reference direction will be indicated. Your task is to decide "
-                         "whether the net direction of motion was towards the BLUE or the ORANGE side of the reference. "
-                         "To make a choice, press the BLUE or the ORANGE button on the keyboard. \n\n\n\n"
+instructions_txt.text = ("You have completed the training session! Now, it will become more difficult to estimate the net direction of dot motion. "
+                         "It is meant to be difficult, so please do not worry if you find it hard. \n\n"
+                         f"You will no longer receive feedback. There will be {gv['n_trials_per_block'] * gv['n_blocks']} trials.\n\n\n\n"
                          "Press SPACE to continue.")
 instructions_txt.draw()
 win.flip()
@@ -169,16 +126,6 @@ hf.exit_q(win)
 event.waitKeys(keyList=['space'])  # show instructions until space is pressed
 event.clearEvents()
 
-# Confidence reminder
-instructions_txt.text = ("On some trials, you will be asked to rate your confidence in your decision on a scale from 50% to 100%. \n\n"
-                         "The slider-marker will start out in a random position. Use the response keys to move the slider and press SPACE to confirm your response. \n\n"
-                         "To maximise your bonus, you must make as many correct decisions as possible and estimate your confidence as accurately as possible. \n\n\n\n"
-                         "Press SPACE to begin.")
-instructions_txt.draw()
-win.flip()
-hf.exit_q(win)
-event.waitKeys(keyList=['space'])  # show instructions until space is pressed
-event.clearEvents()
 
 ###################################
 # TASK
