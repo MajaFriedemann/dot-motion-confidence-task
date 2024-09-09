@@ -1,3 +1,12 @@
+"""
+Two-down-one-up staircase procedure for coherence and distance.
+Automatically runs after training.py to determine the coherence and distance levels for the main task.
+These will be loaded in main.py from the participant's data file.
+
+Maja Friedemann 2024
+"""
+
+
 ###################################
 # IMPORT PACKAGES
 ###################################
@@ -22,7 +31,7 @@ print('Reminder: Press Q to quit.')
 # TASK VARIABLES
 gv = dict(
     n_blocks=8,  # number of alternating calibration blocks - 240 staircase trials in total
-    n_trials_per_block=30,  # number of trials per block
+    n_trials_per_block=30,  # number of trials per block - 240 trials in total
     dot_display_time=1.0,  # duration of dot display, 1 second
     inter_trial_interval=[0.5, 1.0],  # duration of inter-trial interval, uniform distribution, 0.5-1 second
     response_keys=['o', 'p'],  # keys for CW and CCW responses
@@ -57,7 +66,7 @@ datafile.write(','.join(log_vars) + '\n')
 datafile.flush()
 
 ###################################
-# SET UP WINDOW, MOUSE, EEG TRIGGERS, CLOCK
+# SET UP WINDOW, MOUSE, CLOCK
 ###################################
 # WINDOW
 mon = monitors.Monitor('maja_dell_1')
@@ -78,15 +87,6 @@ mouse.setVisible(False)
 # Explicitly hide the cursor on Windows
 if os.name == 'nt':  # Check if the OS is Windows
     ctypes.windll.user32.ShowCursor(False)
-
-# EEG TRIGGERS
-triggers = dict(
-    experiment_start=1,
-    experiment_end=20
-)
-# Create an EEGConfig object
-send_triggers = info['eeg'].lower() == 'y'
-EEG_config = hf.EEGConfig(triggers, send_triggers)
 
 # CLOCK
 clock = core.Clock()
@@ -130,7 +130,6 @@ event.clearEvents()
 ###################################
 # TASK
 ###################################
-EEG_config.send_trigger(EEG_config.triggers['experiment_start'])
 start_time = datetime.now()
 info['start_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
 correct_responses = 0
@@ -258,8 +257,10 @@ for block in range(gv['n_blocks']):
         datafile.write(','.join([str(info[var]) for var in log_vars]) + '\n')
         datafile.flush()
 
+###################################
 # END
-info['end_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
+###################################
+datafile.close()
 instructions_txt.text = ("Well done! You have completed the task. \n\n")
 instructions_txt.draw()
 win.flip()

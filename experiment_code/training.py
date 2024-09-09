@@ -1,3 +1,11 @@
+"""
+Very easy version to get the participant used to the task. No confidence ratings.
+Run before main.py
+Automatically start staircase.py after the training.
+
+Maja Friedemann 2024
+"""
+
 ###################################
 # IMPORT PACKAGES
 ###################################
@@ -23,8 +31,7 @@ print('Reminder: Press Q to quit.')
 expName = 'confidence-pgACC-TUS'
 curecID = 'R88533/RE002'
 expInfo = {'participant nr': '999',
-           'eeg (y/n)': 'n',
-           'session nr': '1',
+           'session nr': '0',
            'age': '',
            'gender (f/m/o)': '',
            }
@@ -51,7 +58,6 @@ gv = dict(
 ###################################
 # variables in info will be saved as participant data
 info = dict(
-    eeg=expInfo['eeg (y/n)'],
     expName=expName,
     curec_ID=curecID,
     session_nr=expInfo['session nr'],
@@ -82,7 +88,7 @@ datafile.write(','.join(log_vars) + '\n')
 datafile.flush()
 
 ############################################
-# SET UP WINDOW, MOUSE, EEG TRIGGERS, CLOCK
+# SET UP WINDOW, MOUSE, CLOCK
 ############################################
 # WINDOW
 mon = monitors.Monitor('maja_dell_1')
@@ -104,15 +110,6 @@ mouse.setVisible(False)
 if os.name == 'nt':  # Check if the OS is Windows
     ctypes.windll.user32.ShowCursor(False)
 
-# EEG TRIGGERS
-triggers = dict(
-    experiment_start=1,
-    experiment_end=20
-)
-# Create an EEGConfig object
-send_triggers = expInfo['eeg (y/n)'].lower() == 'y'
-EEG_config = hf.EEGConfig(triggers, send_triggers)
-
 # CLOCK
 clock = core.Clock()
 
@@ -129,7 +126,7 @@ dot_params = {  # parameters for dot-patch
     'speed': 0.1,
     'fieldSize': [10, 10],
     'fieldShape': 'circle',
-    'dotLife': -1,  # number of frames each dot lives for (-1=infinite)
+    'dotLife': 3,  # number of frames each dot lives for (-1=infinite)
     'signalDots': 'same',  # if ‘same’ then the signal and noise dots are constant. If ‘different’ then the choice of which is signal and which is noise gets randomised on each frame.
     'noiseDots': 'walk'  # ‘position’ = noise dots take a random position every frame; ‘direction’ = noise dots follow a random, but constant direction; ‘walk’ = noise dots vary their direction every frame, but keep a constant speed.
 }
@@ -177,7 +174,6 @@ event.clearEvents()
 ###################################
 # TASK
 ###################################
-EEG_config.send_trigger(EEG_config.triggers['experiment_start'])
 start_time = datetime.now()
 info['start_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
 correct_responses = 0
@@ -275,9 +271,10 @@ for trial in range(gv['n_trials']):
     datafile.write(','.join([str(info[var]) for var in log_vars]) + '\n')
     datafile.flush()
 
+###################################
 # END
-info['end_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
-bonus = correct_responses * gv['bonus_factor']
+###################################
+datafile.close()
 instructions_txt.text = ("Well done! You have completed the training session.\n\n\n\n"
                          "Press SPACE to continue.")
 instructions_txt.draw()
@@ -288,7 +285,6 @@ event.clearEvents()
 
 # Convert the `info` dictionary to a JSON string
 info_json = json.dumps(info)
-
 # Call the next script, passing the JSON string as an argument
 subprocess.run(['python', 'staircase.py', info_json])
 

@@ -1,3 +1,17 @@
+"""
+Dot motion with decision boundary confidence task.
+Participants view a cloud of dots moving in a certain direction and decide whether the overall direction
+of the dots was closer to the blue or orange side of a reference direction.
+Participants rate their confidence which should be affected by the coherence of the dot motion and the distance of the reference direction from the true direction.
+
+Run training.py (and thereby staircase.py) before running this script to calibrate the coherence and distance levels to the participant.
+
+Based on Bang et al., 2020, Neuron 108, 999–1010.
+Maybe adjust dot motion stimulus to align with Dan's version - currently just using the PsychoPy dotStim.
+
+Maja Friedemann 2024
+"""
+
 ###################################
 # IMPORT PACKAGES
 ###################################
@@ -47,6 +61,8 @@ gv = dict(
 ###################################
 # DATA SAVING
 ###################################
+# initialize an empty list to accumulate trial data
+all_trials = []
 # variables in info will be saved as participant data
 info = dict(
     expName=expName,
@@ -69,6 +85,7 @@ info = dict(
     response_time=None,  # response time
     confidence_rating=None,  # confidence rating
     confidence_response_time=None,  # confidence response time
+    bonus=None  # bonus earned
 )
 
 # start a csv file for saving the participant data
@@ -175,8 +192,6 @@ hf.exit_q(win)
 event.waitKeys(keyList=['space'])  # Show instructions until SPACE is pressed
 event.clearEvents()
 
-
-
 ###################################
 # TASK
 ###################################
@@ -275,10 +290,38 @@ for trial in range(gv['n_trials']):
     info['confidence_response_time'] = confidence_response_time
     datafile.write(','.join([str(info[var]) for var in log_vars]) + '\n')
     datafile.flush()
+    # append a copy of the current trial info to the all_trials list
+    all_trials.append(info.copy())
 
+###################################
 # END
+###################################
 info['end_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
-bonus = correct_responses * gv['bonus_factor']
+bonus = round(correct_responses * gv['bonus_factor'], 2)
+info['bonus'] = bonus
+
+# Update the last trial with end time and bonus payment
+if all_trials:
+    all_trials[-1]['end_time'] = info['end_time']
+    all_trials[-1]['bonus'] = info['bonus']
+
+    # Close the file before reopening it in read/write mode
+    datafile.close()
+
+    # Reopen the file in read/write mode
+    with open(filename + '.csv', 'r+') as datafile:
+        # Read the current content of the file
+        lines = datafile.readlines()
+
+        # Replace the last line with the updated trial info
+        lines[-1] = ','.join([str(all_trials[-1][var]) for var in log_vars]) + '\n'
+
+        # Write back the modified content
+        datafile.seek(0)
+        datafile.writelines(lines)
+        datafile.flush()
+
+datafile.close()
 instructions_txt.text = ("Well done! You have completed the task. \n\n"
                          f"You made {correct_responses} correct responses out of {gv['n_trials']} trials. \n\n"
                          f"Your bonus is £{bonus}. \n\n")
