@@ -29,11 +29,11 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
     fixation_diameter = 0.2  # Fixation cross diameter in degrees (0.2 in Bang et al 2020)
     fixation_exclusion_radius = 0.3  # No-dots zone radius around the fixation cross
 
-    dot_density = 16  # Dot density in dots per degrees^-2 per second (16 in Bang et al 2020)
+    dot_density = 7  # Dot density in dots per degrees^-2 per second (16 in Bang et al 2020)
     aperture_area = np.pi * (aperture_diameter / 2) ** 2  # Area of the aperture in degrees^2
     n_dots = int(dot_density * aperture_area)  # Number of dots based on density
 
-    speed = 2  # Speed of motion in degrees per second (2 in Bang et al 2020)
+    speed = 6  # Speed of motion in degrees per second (2 in Bang et al 2020)
     frame_duration = 1.0 / win.getActualFrameRate()  # Frame rate 60Hz --> 1/60 = 0.0167 seconds
     move_distance = speed * frame_duration  # Distance a coherent dot moves in one frame
 
@@ -49,7 +49,7 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
             x_positions = radii * np.cos(angles)  # Convert polar to Cartesian coordinates (x)
             y_positions = radii * np.sin(angles)  # Convert polar to Cartesian coordinates (y)
             dots.extend(np.column_stack((x_positions, y_positions)))
-        return np.array(dots)  # Return exactly n_dots
+        return np.array(dots)
 
     # Generate random dot positions for three sets of dots
     dot_sets = [generate_random_dots(n_dots) for _ in range(3)]
@@ -78,19 +78,27 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
     )
 
     # Wrap dots around the circular aperture
-    def wrap_around_circular(dot_positions):
+    def wrap_around_circular(dot_positions, move_x, move_y):
         """
-        Implement circular wrapping. When a dot leaves one side of the aperture, it re-enters from the other side
-        at the same distance and angle, keeping the motion direction consistent.
+        Implement circular wrapping. When a dot leaves one side of the aperture, it moves back,
+        reflects to the other side, and the movement is re-done.
         """
         # Calculate distance from center for each dot
         distances_from_center = np.sqrt(dot_positions[:, 0] ** 2 + dot_positions[:, 1] ** 2)
         outside_aperture = distances_from_center > (aperture_diameter / 2)
 
         if np.any(outside_aperture):
-            # Move dots that are outside the aperture back into the opposite side of the circle
-            dot_positions[outside_aperture, 0] *= -1  # Reflect across the center
-            dot_positions[outside_aperture, 1] *= -1  # Reflect across the center
+            # Move the dot back to its previous position (undo the movement)
+            dot_positions[outside_aperture, 0] -= move_x[outside_aperture]
+            dot_positions[outside_aperture, 1] -= move_y[outside_aperture]
+
+            # Reflect across the center
+            dot_positions[outside_aperture, 0] *= -1
+            dot_positions[outside_aperture, 1] *= -1
+
+            # Re-apply the movement to the reflected position
+            dot_positions[outside_aperture, 0] += move_x[outside_aperture]
+            dot_positions[outside_aperture, 1] += move_y[outside_aperture]
 
         return dot_positions
 
@@ -115,17 +123,34 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
         coherent_indices = np.random.choice(n_dots, int(n_dots * motion_coherence), replace=False)
         random_indices = np.setdiff1d(np.arange(n_dots), coherent_indices)
 
-        # Update coherent dots (those moving in a specific direction)
-        dot_positions[coherent_indices, 0] += np.cos(motion_direction_rad) * move_distance
-        dot_positions[coherent_indices, 1] += np.sin(motion_direction_rad) * move_distance
+        # Compute coherent movement vectors
+        coherent_move_x = np.cos(motion_direction_rad) * move_distance
+        coherent_move_y = np.sin(motion_direction_rad) * move_distance
 
-        # Update random dots (those moving in random directions)
+        # Move coherent dots
+        dot_positions[coherent_indices, 0] += coherent_move_x
+        dot_positions[coherent_indices, 1] += coherent_move_y
+
+        # Compute random movement vectors
         random_angles = np.random.rand(len(random_indices)) * 2 * np.pi  # Random angles for random dots
-        dot_positions[random_indices, 0] += np.cos(random_angles) * move_distance  # Move in random x-direction
-        dot_positions[random_indices, 1] += np.sin(random_angles) * move_distance  # Move in random y-direction
+        random_move_x = np.cos(random_angles) * move_distance  # Random movement in x
+        random_move_y = np.sin(random_angles) * move_distance  # Random movement in y
 
-        # Wrap dots that move outside the aperture (circular wrapping)
-        dot_positions = wrap_around_circular(dot_positions)
+        # Move random dots
+        dot_positions[random_indices, 0] += random_move_x
+        dot_positions[random_indices, 1] += random_move_y
+
+        # Combine movement vectors into one array for all dots
+        move_x = np.zeros_like(dot_positions[:, 0])
+        move_y = np.zeros_like(dot_positions[:, 1])
+
+        move_x[coherent_indices] = coherent_move_x
+        move_y[coherent_indices] = coherent_move_y
+        move_x[random_indices] = random_move_x
+        move_y[random_indices] = random_move_y
+
+        # Wrap dots that move outside the aperture
+        dot_positions = wrap_around_circular(dot_positions, move_x, move_y)
 
         # Compute dot opacities (transparent for dots in the no-dot zone, visible otherwise)
         dot_opacity = compute_dot_opacity(dot_positions)
