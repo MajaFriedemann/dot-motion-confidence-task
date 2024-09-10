@@ -33,7 +33,7 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
     aperture_area = np.pi * (aperture_diameter / 2) ** 2  # Area of the aperture in degrees^2
     n_dots = int(dot_density * aperture_area)  # Number of dots based on density
 
-    speed = 6  # Speed of motion in degrees per second (2 in Bang et al 2020)
+    speed = 6  # Speed of motion in degrees per second (2 in Bang et al 2020,although 5 in Dans script?)
     frame_duration = 1.0 / win.getActualFrameRate()  # Frame rate 60Hz --> 1/60 = 0.0167 seconds
     move_distance = speed * frame_duration  # Distance a coherent dot moves in one frame
 
