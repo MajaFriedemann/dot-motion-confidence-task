@@ -22,6 +22,7 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
     - motion_direction: the direction of coherent motion (in degrees)
     - motion_coherence: the proportion of dots moving in the coherent direction (0.0 to 1.0)
     """
+
     # Parameters
     aperture_diameter = 8  # Diameter of circular aperture in degrees (8 in Bang et al 2020)
     dot_diameter = 0.12  # Dot diameter in degrees (0.12 in Bang et al 2020)
@@ -39,7 +40,7 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
     # Generate random dot positions within the circular aperture
     def generate_random_dots(n_dots):
         """
-        Generates dots uniformly within a circular aperture without excluding dots near the fixation.
+        Generates dots uniformly within a circular aperture.
         """
         dots = []
         while len(dots) < n_dots:
@@ -76,6 +77,7 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
         units='deg'
     )
 
+    # Wrap dots around the circular aperture
     def wrap_around_circular(dot_positions):
         """
         Implement circular wrapping. When a dot leaves one side of the aperture, it re-enters from the other side
@@ -92,6 +94,7 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
 
         return dot_positions
 
+    # Make dots in the no-dot zone around fixation cross transparent
     def compute_dot_opacity(dot_positions):
         """
         Set opacity based on whether a dot is in the no-dot zone or outside it.
@@ -103,6 +106,7 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
         opacities[inside_no_dot_zone] = 0  # Make dots inside the no-dot zone transparent
         return opacities
 
+    # Update dot positions for each frame
     def update_dots(dot_positions):
         """
         Update the positions of the dots and reshuffle the coherent and random assignment each frame.
@@ -128,7 +132,7 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
 
         return dot_positions, dot_opacity
 
-    # Main loop: present the stimulus until a key is pressed
+    # Main loop: Present the stimulus until a key is pressed
     frame_count = 0
     while not event.getKeys():
         # Select the appropriate dot set for the current frame
@@ -147,7 +151,7 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
         # Draw the dots
         dot_stim.draw()
 
-        # Flip the window buffer to show the updated frame
+        # Flip the window to show the updated frame
         win.flip()
 
         # Increment the frame counter
