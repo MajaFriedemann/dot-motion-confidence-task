@@ -29,7 +29,7 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
     fixation_diameter = 0.2  # Fixation cross diameter in degrees (0.2 in Bang et al 2020)
     fixation_exclusion_radius = 0.3  # No-dots zone radius around the fixation cross
 
-    dot_density = 7  # Dot density in dots per degrees^-2 per second (16 in Bang et al 2020)
+    dot_density = 8  # Dot density in dots per degrees^-2 per second (16 in Bang et al 2020)
     aperture_area = np.pi * (aperture_diameter / 2) ** 2  # Area of the aperture in degrees^2
     n_dots = int(dot_density * aperture_area)  # Number of dots based on density
 
