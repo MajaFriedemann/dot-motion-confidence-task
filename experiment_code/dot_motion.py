@@ -1,19 +1,9 @@
 import numpy as np
-from psychopy import visual, core, event, monitors
+from psychopy import visual, core, monitors, event
 
-# Create the window
-mon = monitors.Monitor('maja_dell_1')
-win = visual.Window(
-    size=(1920, 1080),
-    units="deg",
-    screen=1,
-    fullscr=True,
-    color=(0.001, 0.001, 0.001),
-    colorSpace='rgb',
-    monitor=mon
-)
 
-def create_dot_motion_stimulus_n_sets(win, motion_direction, motion_coherence, n_dot_sets=3, random_dot_behaviour='random_position'):
+def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_coherence, n_dot_sets=3,
+                                      random_dot_behaviour='random_position', duration=5, aperture_diameter=8, fixation_diameter=0.3):
     """
     Create a random dot motion stimulus with n sets of dots, with the specified motion direction and coherence.
 
@@ -23,29 +13,30 @@ def create_dot_motion_stimulus_n_sets(win, motion_direction, motion_coherence, n
     - motion_coherence: the proportion of dots moving in the coherent direction (0.0 to 1.0)
     - n_dot_sets: the number of sets of dots to display (default: 3)
     - random_dot_behaviour: the behaviour of the random dots ('random_position' or 'random_walk')
+    - duration: the duration of the stimulus presentation in seconds (default: 5)
+    - aperture_diameter: the diameter of the circular aperture in degrees (default: 8)
+    - fixation_diameter: the diameter of the fixation cross in degrees (default: 0.3)
     """
 
     # Parameters
-    aperture_diameter = 8  # Diameter of circular aperture in degrees (8 in Bang et al 2020)
-    dot_diameter = 0.12  # Dot diameter in degrees (0.12 in Bang et al 2020)
-    fixation_diameter = 0.2  # Fixation cross diameter in degrees (0.2 in Bang et al 2020)
-    fixation_exclusion_radius = 0.3  # No-dots zone radius around the fixation cross
+    dot_diameter = 0.22  # Dot diameter in degrees (0.12 in Bang et al 2020)
+    fixation_exclusion_radius = fixation_diameter + 0.02  # No-dots zone radius around the fixation cross
 
-    dot_density = 5  # Dot density in dots per degrees^-2 per second (16 in Bang et al 2020)
+    dot_density = 1  # Dot density in dots per degrees^-2 per second (16 in Bang et al 2020)
     aperture_area = np.pi * (aperture_diameter / 2) ** 2  # Area of the aperture in degrees^2
     n_dots = int(dot_density * aperture_area)  # Number of dots based on density
 
     speed = 2 * n_dot_sets  # Speed of motion in degrees per second (2 in Bang et al 2020)
-    frame_duration = 1.0 / win.getActualFrameRate()  # Frame rate 60Hz --> 1/60 = 0.0167 seconds
+    frame_duration = 1.0 / frame_rate  # Frame rate 60Hz --> 1/60 = 0.0167 seconds
     move_distance = speed * frame_duration  # Distance a coherent dot moves in one frame
 
     # Create a circular aperture outline (white)
     aperture_outline = visual.Circle(
         win,
         radius=aperture_diameter / 2,
-        edges=128,
+        edges=100,
         lineColor='white',  # White outline
-        lineWidth=3,  # Line thickness
+        lineWidth=5,  # Line thickness
         units='deg',
         fillColor=None  # No fill, just an outline
     )
@@ -75,7 +66,7 @@ def create_dot_motion_stimulus_n_sets(win, motion_direction, motion_coherence, n
         win,
         vertices=[(-fixation_diameter / 2, 0), (fixation_diameter / 2, 0), (0, 0), (0, fixation_diameter / 2),
                   (0, -fixation_diameter / 2)],
-        lineWidth=2,
+        lineWidth=4,
         closeShape=False,
         lineColor='white'
     )
@@ -184,7 +175,7 @@ def create_dot_motion_stimulus_n_sets(win, motion_direction, motion_coherence, n
 
     # Main loop: Present the stimulus until a key is pressed
     frame_count = 0
-    while not event.getKeys():
+    while frame_count * frame_duration < duration:
         # Select the appropriate dot set for the current frame
         current_set = frame_count % n_dot_sets
 
@@ -213,8 +204,3 @@ def create_dot_motion_stimulus_n_sets(win, motion_direction, motion_coherence, n
         # Brief pause between frames
         core.wait(frame_duration)
 
-    # Close the window when done
-    win.close()
-
-
-create_dot_motion_stimulus_n_sets(win, motion_direction=180, motion_coherence=0.5)
