@@ -12,7 +12,6 @@ import time
 from psychopy import gui, visual, core, data, event
 import pandas as pd
 import numpy as np
-from RDK_3_sets_psychopy import DotStimMN
 
 
 ###################################
@@ -109,19 +108,6 @@ def convert_rgb_to_psychopy(rgb):
     turn rgp colour code to colour format that PsychoPy needs
     """
     return tuple([(x / 127.5) - 1 for x in rgb])
-
-
-def create_dot_motion_stimulus(win, dot_params, motion_direction, motion_coherence):
-    """
-    create dot motion stimulus with specified direction and coherence
-    this just uses the dotStim from psychopy
-    """
-    return visual.DotStim(
-        win=win,
-        dir=motion_direction,
-        coherence=motion_coherence,
-        **dot_params
-    )
 
 
 def draw_arc(win, radius, start_deg, end_deg, color, pos=(0, 0)):

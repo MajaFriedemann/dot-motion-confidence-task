@@ -1,16 +1,14 @@
 ###################################
 # IMPORT PACKAGES
 ###################################
-import csv
-import json
 import numpy as np
 import os
-import random
 from datetime import datetime
-import time
 from psychopy import gui, visual, core, data, event, monitors
-import helper_functions as hf
 import ctypes  # for hiding the mouse cursor on Windows
+
+import helper_functions as hf
+from RDK_3_sets import create_dot_motion_stimulus_n_sets
 
 print('Reminder: Press Q to quit.')
 
@@ -37,10 +35,10 @@ gv = dict(
     dot_display_time=1.0,  # duration of dot display, 1 second
     inter_trial_interval=[0.5, 1.0],  # duration of inter-trial interval, uniform distribution, 0.5-1 second
     response_keys=['o', 'p'],  # keys for CW and CCW responses
-    low_coherence=0.2,  # low coherence
-    high_coherence=0.4,  # high coherence
-    low_distance=10,  # low distance
-    high_distance=30,  # high distance
+    low_coherence=0.2,  # low coherence - needs to be calibrated to the participant
+    high_coherence=0.4,  # high coherence - needs to be calibrated to the participant
+    low_distance=10,  # low distance - needs to be calibrated to the participant
+    high_distance=30,  # high distance - needs to be calibrated to the participant
     bonus_factor=0.1  # bonus factor times correct responses
 )
 
@@ -94,6 +92,7 @@ win = visual.Window(
     colorSpace='rgb',
     monitor=mon
 )
+frame_rate = win.getActualFrameRate()
 
 # MOUSE
 win.setMouseVisible(False)
@@ -121,20 +120,33 @@ clock = core.Clock()
 big_txt = visual.TextStim(win=win, text='Welcome!', height=2, pos=[0, 3], color='white', wrapWidth=20, font='Monospace')
 instructions_txt = visual.TextStim(win=win, text="\n\n\n\n\n\n Press SPACE to start.", height=1, pos=[0, 2], wrapWidth=30, color='white', font='Monospace')
 instructions_top_txt = visual.TextStim(win=win, text="Instructions", height=1, pos=[0, 7.5], wrapWidth=30, color='white', font='Monospace')
-dot_params = {  # parameters for dot-patch
-    'units': 'deg',
-    'nDots': 150,
-    'dotSize': 9,
-    'speed': 0.1,
-    'fieldSize': [10, 10],
-    'fieldShape': 'circle',
-    'dotLife': -1,  # number of frames each dot lives for (-1=infinite)
-    'signalDots': 'same',  # if ‘same’ then the signal and noise dots are constant. If ‘different’ then the choice of which is signal and which is noise gets randomised on each frame.
-    'noiseDots': 'walk'  # ‘position’ = noise dots take a random position every frame; ‘direction’ = noise dots follow a random, but constant direction; ‘walk’ = noise dots vary their direction every frame, but keep a constant speed.
+dot_parameters = {
+    'n_dot_sets': 3,
+    'random_dot_behaviour': 'random_position',
+    'duration': gv['dot_display_time'],
+    'aperture_diameter': 8,
+    'fixation_diameter': 0.4,
+    'dot_diameter': 0.16,
+    'dot_density': 1,
+    'speed': 2
 }
-fixation = visual.TextStim(win, text='+', height=1.5, color='white')
-no_dot_zone = visual.Circle(win, radius=0.5, edges=100, fillColor=(0.001, 0.001, 0.001))  # circle around fixation cross
-dot_outline = visual.Circle(win, radius=dot_params['fieldSize'][0] / 2, edges=100, lineColor='white', lineWidth=5, fillColor=None)
+aperture_outline = visual.Circle(
+        win,
+        radius=dot_parameters['aperture_diameter'] / 2,
+        edges=100,
+        lineColor='white',  # White outline
+        lineWidth=5,  # Line thickness
+        units='deg',
+        fillColor=None  # No fill, just an outline
+    )
+fixation = visual.ShapeStim(
+        win,
+        vertices=[(-dot_parameters['fixation_diameter'] / 2, 0), (dot_parameters['fixation_diameter'] / 2, 0), (0, 0), 
+                  (0, dot_parameters['fixation_diameter'] / 2), (0, -dot_parameters['fixation_diameter'] / 2)],
+        lineWidth=4,
+        closeShape=False,
+        lineColor='white'
+    )
 
 ###################################
 # INSTRUCTIONS
@@ -210,28 +222,23 @@ for trial in range(gv['n_trials']):
     print(f"Trial {trial}: direction={direction}, coherence={coherence}, distance={distance}, reference={reference}")
 
     # Show fixation cross
-    stimuli = [dot_outline, fixation]
+    stimuli = [aperture_outline, fixation]
     delay = np.random.uniform(gv['inter_trial_interval'][0], gv['inter_trial_interval'][1])
     hf.draw_all_stimuli(win, stimuli, delay)
     hf.exit_q(win)
 
     # Show dots
-    dots = hf.create_dot_motion_stimulus(win, dot_params, direction, coherence)
-    clock.reset()
-    while clock.getTime() < gv['dot_display_time']:
-        stimuli = [dot_outline, dots, no_dot_zone, fixation]
-        hf.draw_all_stimuli(win, stimuli)
-        hf.exit_q(win)
+    create_dot_motion_stimulus_n_sets(win, frame_rate, 180, 0.5, dot_parameters)
 
     # Show reference direction
-    arc_CW = hf.draw_arc(win, dot_params['fieldSize'][0] / 2, reference, reference - 90, 'blue')
-    arc_CCW = hf.draw_arc(win, dot_params['fieldSize'][0] / 2, reference, reference + 90, 'orange')
-    ref_line = visual.Line(win, start=((dot_params['fieldSize'][0] / 2 - 1) * np.cos(np.deg2rad(reference)),
-                                       (dot_params['fieldSize'][0] / 2 - 1) * np.sin(np.deg2rad(reference))),
-                           end=((dot_params['fieldSize'][0] / 2 + 1) * np.cos(np.deg2rad(reference)),
-                                (dot_params['fieldSize'][0] / 2 + 1) * np.sin(np.deg2rad(reference))),
-                           lineColor='white', lineWidth=10)
-    stimuli = [dot_outline, arc_CW, arc_CCW, ref_line, fixation]
+    arc_CW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2, reference, reference - 90, 'blue')
+    arc_CCW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2, reference, reference + 90, 'orange')
+    ref_line = visual.Line(win, start=((dot_parameters['aperture_diameter'] / 2 - 1) * np.cos(np.deg2rad(reference)),
+                                       (dot_parameters['aperture_diameter'] / 2 - 1) * np.sin(np.deg2rad(reference))),
+                           end=((dot_parameters['aperture_diameter'] / 2 + 1) * np.cos(np.deg2rad(reference)),
+                                (dot_parameters['aperture_diameter'] / 2 + 1) * np.sin(np.deg2rad(reference))),
+                           lineColor='white', lineWidth=6)
+    stimuli = [aperture_outline, arc_CW, arc_CCW, ref_line, fixation]
     hf.draw_all_stimuli(win, stimuli)
     hf.exit_q(win)
 
@@ -247,7 +254,7 @@ for trial in range(gv['n_trials']):
         correct_responses += 1
 
     # Response visual feedback
-    stimuli = [dot_outline, arc_CW, arc_CCW, ref_line, fixation]
+    stimuli = [aperture_outline, arc_CW, arc_CCW, ref_line, fixation]
     hf.draw_all_stimuli(win, stimuli, 0.5)
     hf.exit_q(win)
 

@@ -1,9 +1,7 @@
 import numpy as np
 from psychopy import visual, core, monitors, event
 
-
-def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_coherence, n_dot_sets=3,
-                                      random_dot_behaviour='random_position', duration=5, aperture_diameter=8, fixation_diameter=0.3):
+def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_coherence, parameters):
     """
     Create a random dot motion stimulus with n sets of dots, with the specified motion direction and coherence.
 
@@ -11,23 +9,26 @@ def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_
     - win: the PsychoPy window in which to display the stimulus
     - motion_direction: the direction of coherent motion (in degrees)
     - motion_coherence: the proportion of dots moving in the coherent direction (0.0 to 1.0)
-    - n_dot_sets: the number of sets of dots to display (default: 3)
-    - random_dot_behaviour: the behaviour of the random dots ('random_position' or 'random_walk')
-    - duration: the duration of the stimulus presentation in seconds (default: 5)
-    - aperture_diameter: the diameter of the circular aperture in degrees (default: 8)
-    - fixation_diameter: the diameter of the fixation cross in degrees (default: 0.3)
+    - parameters: dictionary of parameters including 'n_dot_sets', 'random_dot_behaviour', 'duration', 'aperture_diameter',
+                  'fixation_diameter', 'dot_diameter', 'dot_density', and 'speed'
     """
 
-    # Parameters
-    dot_diameter = 0.22  # Dot diameter in degrees (0.12 in Bang et al 2020)
-    fixation_exclusion_radius = fixation_diameter + 0.02  # No-dots zone radius around the fixation cross
+    # Extract parameters from the dictionary, otherwise use default values
+    n_dot_sets = parameters.get('n_dot_sets', 3)
+    random_dot_behaviour = parameters.get('random_dot_behaviour', 'random_position')
+    duration = parameters.get('duration', 5)
+    aperture_diameter = parameters.get('aperture_diameter', 8)
+    fixation_diameter = parameters.get('fixation_diameter', 0.3)
+    dot_diameter = parameters.get('dot_diameter', 0.16)  # Default dot diameter in degrees
+    dot_density = parameters.get('dot_density', 1)  # Default dot density in dots per degrees^-2 per second
+    speed = parameters.get('speed', 2)  # Default speed of motion in degrees per second
 
-    dot_density = 1  # Dot density in dots per degrees^-2 per second (16 in Bang et al 2020)
+    # Calculate derived parameters
+    fixation_exclusion_radius = fixation_diameter + 0.02  # No-dots zone radius around the fixation cross
     aperture_area = np.pi * (aperture_diameter / 2) ** 2  # Area of the aperture in degrees^2
     n_dots = int(dot_density * aperture_area)  # Number of dots based on density
-
-    speed = 2 * n_dot_sets  # Speed of motion in degrees per second (2 in Bang et al 2020)
-    frame_duration = 1.0 / frame_rate  # Frame rate 60Hz --> 1/60 = 0.0167 seconds
+    frame_duration = 1.0 / frame_rate  # e.g., 60Hz --> 1/60 = 0.0167 seconds
+    speed = speed * n_dot_sets  # Adjust speed for multiple sets of dots
     move_distance = speed * frame_duration  # Distance a coherent dot moves in one frame
 
     # Create a circular aperture outline (white)
@@ -55,7 +56,7 @@ def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_
             dots.extend(np.column_stack((x_positions, y_positions)))
         return np.array(dots)
 
-    # Generate random dot positions for three sets of dots
+    # Generate random dot positions for n sets of dots
     dot_sets = [generate_random_dots(n_dots) for _ in range(n_dot_sets)]
 
     # Convert motion direction from degrees to radians
@@ -201,9 +202,6 @@ def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_
         # Increment the frame counter
         frame_count += 1
 
-        # Brief pause between frames
-        core.wait(frame_duration)
-
 
 
 # WINDOW
@@ -218,6 +216,19 @@ win = visual.Window(
     monitor=mon
 )
 
-# Create dot motion stimulus
-create_dot_motion_stimulus_n_sets(win, 60, 0, 0.5, n_dot_sets=3, random_dot_behaviour='random_position', duration=5, aperture_diameter=8, fixation_diameter=0.3)
-win.close()
+
+# # Create dot motion stimulus
+# # Trying out
+# dot_parameters = {
+#     'n_dot_sets': 3,
+#     'random_dot_behaviour': 'random_position',
+#     'duration': 6,
+#     'aperture_diameter': 8,
+#     'fixation_diameter': 0.4,
+#     'dot_diameter': 0.16,
+#     'dot_density': 1,
+#     'speed': 2
+# }
+# frame_rate = win.getActualFrameRate()
+# create_dot_motion_stimulus_n_sets(win, frame_rate, 180, 0.5, dot_parameters)
+# win.close()
