@@ -1,17 +1,3 @@
-"""
-Dot motion with decision boundary confidence task.
-Participants view a cloud of dots moving in a certain direction and decide whether the overall direction
-of the dots was closer to the blue or orange side of a reference direction.
-Participants rate their confidence which should be affected by the coherence of the dot motion and the distance of the reference direction from the true direction.
-
-Run training.py (and thereby staircase.py) before running this script to calibrate the coherence and distance levels to the participant.
-
-Based on Bang et al., 2020, Neuron 108, 999–1010.
-Maybe adjust dot motion stimulus to align with Dan's version - currently just using the PsychoPy dotStim.
-
-Maja Friedemann 2024
-"""
-
 ###################################
 # IMPORT PACKAGES
 ###################################
@@ -51,18 +37,16 @@ gv = dict(
     dot_display_time=1.0,  # duration of dot display, 1 second
     inter_trial_interval=[0.5, 1.0],  # duration of inter-trial interval, uniform distribution, 0.5-1 second
     response_keys=['o', 'p'],  # keys for CW and CCW responses
-    low_coherence=0.6,  # low coherence - calibrate to participant
-    high_coherence=0.8,  # high coherence - calibrate to participant
-    low_distance=10,  # low distance - calibrate to participant
-    high_distance=30,  # high distance - calibrate to participant
+    low_coherence=0.2,  # low coherence
+    high_coherence=0.4,  # high coherence
+    low_distance=10,  # low distance
+    high_distance=30,  # high distance
     bonus_factor=0.1  # bonus factor times correct responses
 )
 
 ###################################
 # DATA SAVING
 ###################################
-# initialize an empty list to accumulate trial data
-all_trials = []
 # variables in info will be saved as participant data
 info = dict(
     expName=expName,
@@ -85,7 +69,6 @@ info = dict(
     response_time=None,  # response time
     confidence_rating=None,  # confidence rating
     confidence_response_time=None,  # confidence response time
-    bonus=None  # bonus earned
 )
 
 # start a csv file for saving the participant data
@@ -111,7 +94,6 @@ win = visual.Window(
     colorSpace='rgb',
     monitor=mon
 )
-frame_rate = win.getActualFrameRate()
 
 # MOUSE
 win.setMouseVisible(False)
@@ -139,11 +121,20 @@ clock = core.Clock()
 big_txt = visual.TextStim(win=win, text='Welcome!', height=2, pos=[0, 3], color='white', wrapWidth=20, font='Monospace')
 instructions_txt = visual.TextStim(win=win, text="\n\n\n\n\n\n Press SPACE to start.", height=1, pos=[0, 2], wrapWidth=30, color='white', font='Monospace')
 instructions_top_txt = visual.TextStim(win=win, text="Instructions", height=1, pos=[0, 7.5], wrapWidth=30, color='white', font='Monospace')
-aperture_diameter = 10
-dot_outline = visual.Circle(win, radius=aperture_diameter/2, edges=100, lineColor='white', lineWidth=5, fillColor=None)
-fixation_diameter = 0.8
-fixation = visual.ShapeStim(win, vertices=[(-fixation_diameter / 2, 0), (fixation_diameter / 2, 0), (0, 0), (0, fixation_diameter / 2),
-                                           (0, -fixation_diameter / 2)], lineWidth=4, closeShape=False,lineColor='white')
+dot_params = {  # parameters for dot-patch
+    'units': 'deg',
+    'nDots': 150,
+    'dotSize': 9,
+    'speed': 0.1,
+    'fieldSize': [10, 10],
+    'fieldShape': 'circle',
+    'dotLife': -1,  # number of frames each dot lives for (-1=infinite)
+    'signalDots': 'same',  # if ‘same’ then the signal and noise dots are constant. If ‘different’ then the choice of which is signal and which is noise gets randomised on each frame.
+    'noiseDots': 'walk'  # ‘position’ = noise dots take a random position every frame; ‘direction’ = noise dots follow a random, but constant direction; ‘walk’ = noise dots vary their direction every frame, but keep a constant speed.
+}
+fixation = visual.TextStim(win, text='+', height=1.5, color='white')
+no_dot_zone = visual.Circle(win, radius=0.5, edges=100, fillColor=(0.001, 0.001, 0.001))  # circle around fixation cross
+dot_outline = visual.Circle(win, radius=dot_params['fieldSize'][0] / 2, edges=100, lineColor='white', lineWidth=5, fillColor=None)
 
 ###################################
 # INSTRUCTIONS
@@ -184,6 +175,8 @@ hf.exit_q(win)
 event.waitKeys(keyList=['space'])  # Show instructions until SPACE is pressed
 event.clearEvents()
 
+
+
 ###################################
 # TASK
 ###################################
@@ -223,17 +216,21 @@ for trial in range(gv['n_trials']):
     hf.exit_q(win)
 
     # Show dots
-    hf.create_dot_motion_stimulus_n_sets(win, frame_rate, direction, coherence, duration=gv['dot_display_time'],
-                                         aperture_diameter=aperture_diameter, fixation_diameter=fixation_diameter)
+    dots = hf.create_dot_motion_stimulus(win, dot_params, direction, coherence)
+    clock.reset()
+    while clock.getTime() < gv['dot_display_time']:
+        stimuli = [dot_outline, dots, no_dot_zone, fixation]
+        hf.draw_all_stimuli(win, stimuli)
+        hf.exit_q(win)
 
     # Show reference direction
-    arc_CW = hf.draw_arc(win, aperture_diameter / 2, reference, reference - 90, 'blue')
-    arc_CCW = hf.draw_arc(win, aperture_diameter / 2, reference, reference + 90, 'orange')
-    ref_line = visual.Line(win, start=((aperture_diameter / 2 - 1) * np.cos(np.deg2rad(reference)),
-                                       (aperture_diameter / 2 - 1) * np.sin(np.deg2rad(reference))),
-                           end=((aperture_diameter / 2 + 1) * np.cos(np.deg2rad(reference)),
-                                (aperture_diameter / 2 + 1) * np.sin(np.deg2rad(reference))),
-                           lineColor='white', lineWidth=8)
+    arc_CW = hf.draw_arc(win, dot_params['fieldSize'][0] / 2, reference, reference - 90, 'blue')
+    arc_CCW = hf.draw_arc(win, dot_params['fieldSize'][0] / 2, reference, reference + 90, 'orange')
+    ref_line = visual.Line(win, start=((dot_params['fieldSize'][0] / 2 - 1) * np.cos(np.deg2rad(reference)),
+                                       (dot_params['fieldSize'][0] / 2 - 1) * np.sin(np.deg2rad(reference))),
+                           end=((dot_params['fieldSize'][0] / 2 + 1) * np.cos(np.deg2rad(reference)),
+                                (dot_params['fieldSize'][0] / 2 + 1) * np.sin(np.deg2rad(reference))),
+                           lineColor='white', lineWidth=10)
     stimuli = [dot_outline, arc_CW, arc_CCW, ref_line, fixation]
     hf.draw_all_stimuli(win, stimuli)
     hf.exit_q(win)
@@ -278,38 +275,10 @@ for trial in range(gv['n_trials']):
     info['confidence_response_time'] = confidence_response_time
     datafile.write(','.join([str(info[var]) for var in log_vars]) + '\n')
     datafile.flush()
-    # append a copy of the current trial info to the all_trials list
-    all_trials.append(info.copy())
 
-###################################
 # END
-###################################
 info['end_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
-bonus = round(correct_responses * gv['bonus_factor'], 2)
-info['bonus'] = bonus
-
-# Update the last trial with end time and bonus payment
-if all_trials:
-    all_trials[-1]['end_time'] = info['end_time']
-    all_trials[-1]['bonus'] = info['bonus']
-
-    # Close the file before reopening it in read/write mode
-    datafile.close()
-
-    # Reopen the file in read/write mode
-    with open(filename + '.csv', 'r+') as datafile:
-        # Read the current content of the file
-        lines = datafile.readlines()
-
-        # Replace the last line with the updated trial info
-        lines[-1] = ','.join([str(all_trials[-1][var]) for var in log_vars]) + '\n'
-
-        # Write back the modified content
-        datafile.seek(0)
-        datafile.writelines(lines)
-        datafile.flush()
-
-datafile.close()
+bonus = correct_responses * gv['bonus_factor']
 instructions_txt.text = ("Well done! You have completed the task. \n\n"
                          f"You made {correct_responses} correct responses out of {gv['n_trials']} trials. \n\n"
                          f"Your bonus is £{bonus}. \n\n")
