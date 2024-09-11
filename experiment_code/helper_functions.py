@@ -12,6 +12,7 @@ import time
 from psychopy import gui, visual, core, data, event
 import pandas as pd
 import numpy as np
+from RDK_3_sets_psychopy import DotStimMN
 
 
 ###################################
