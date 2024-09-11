@@ -1,6 +1,0 @@
-eeg,expName,curec_ID,session_nr,date,start_time,end_time,participant,age,gender,trial_count,coherence,distance,direction,reference_direction,response,response_time
-n,confidence-pgACC-TUS,R88533/RE002,1,2024-08-29_16h40.42.554,2024-08-29 16:40:46,None,999,,,1,0.5,30,275.55,CW,CW,11.029246699996293
-n,confidence-pgACC-TUS,R88533/RE002,1,2024-08-29_16h40.42.554,2024-08-29 16:40:46,None,999,,,2,0.5,30,290.92,CW,CW,16.280652999994345
-n,confidence-pgACC-TUS,R88533/RE002,1,2024-08-29_16h40.42.554,2024-08-29 16:40:46,None,999,,,3,0.5,30,205.55,CCW,CCW,21.274024999991525
-n,confidence-pgACC-TUS,R88533/RE002,1,2024-08-29_16h40.42.554,2024-08-29 16:40:46,None,999,,,4,0.5,30,75.73,CCW,CCW,26.54713709995849
-n,confidence-pgACC-TUS,R88533/RE002,1,2024-08-29_16h40.42.554,2024-08-29 16:40:46,None,999,,,5,0.5,30,309.83,CCW,CCW,32.0290533999796
