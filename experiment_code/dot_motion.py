@@ -13,14 +13,16 @@ win = visual.Window(
     monitor=mon
 )
 
-def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
+def create_dot_motion_stimulus_n_sets(win, motion_direction, motion_coherence, n_dot_sets=3, random_dot_behaviour='random_position'):
     """
-    Create a random dot motion stimulus with 3 sets of dots, with the specified motion direction and coherence.
+    Create a random dot motion stimulus with n sets of dots, with the specified motion direction and coherence.
 
     Parameters:
     - win: the PsychoPy window in which to display the stimulus
     - motion_direction: the direction of coherent motion (in degrees)
     - motion_coherence: the proportion of dots moving in the coherent direction (0.0 to 1.0)
+    - n_dot_sets: the number of sets of dots to display (default: 3)
+    - random_dot_behaviour: the behaviour of the random dots ('random_position' or 'random_walk')
     """
 
     # Parameters
@@ -29,13 +31,24 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
     fixation_diameter = 0.2  # Fixation cross diameter in degrees (0.2 in Bang et al 2020)
     fixation_exclusion_radius = 0.3  # No-dots zone radius around the fixation cross
 
-    dot_density = 8  # Dot density in dots per degrees^-2 per second (16 in Bang et al 2020)
+    dot_density = 5  # Dot density in dots per degrees^-2 per second (16 in Bang et al 2020)
     aperture_area = np.pi * (aperture_diameter / 2) ** 2  # Area of the aperture in degrees^2
     n_dots = int(dot_density * aperture_area)  # Number of dots based on density
 
-    speed = 6  # Speed of motion in degrees per second (2 in Bang et al 2020,although 5 in Dans script?)
+    speed = 2 * n_dot_sets  # Speed of motion in degrees per second (2 in Bang et al 2020)
     frame_duration = 1.0 / win.getActualFrameRate()  # Frame rate 60Hz --> 1/60 = 0.0167 seconds
     move_distance = speed * frame_duration  # Distance a coherent dot moves in one frame
+
+    # Create a circular aperture outline (white)
+    aperture_outline = visual.Circle(
+        win,
+        radius=aperture_diameter / 2,
+        edges=128,
+        lineColor='white',  # White outline
+        lineWidth=3,  # Line thickness
+        units='deg',
+        fillColor=None  # No fill, just an outline
+    )
 
     # Generate random dot positions within the circular aperture
     def generate_random_dots(n_dots):
@@ -52,7 +65,7 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
         return np.array(dots)
 
     # Generate random dot positions for three sets of dots
-    dot_sets = [generate_random_dots(n_dots) for _ in range(3)]
+    dot_sets = [generate_random_dots(n_dots) for _ in range(n_dot_sets)]
 
     # Convert motion direction from degrees to radians
     motion_direction_rad = np.deg2rad(motion_direction)
@@ -131,25 +144,37 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
         dot_positions[coherent_indices, 0] += coherent_move_x
         dot_positions[coherent_indices, 1] += coherent_move_y
 
-        # Compute random movement vectors
-        random_angles = np.random.rand(len(random_indices)) * 2 * np.pi  # Random angles for random dots
-        random_move_x = np.cos(random_angles) * move_distance  # Random movement in x
-        random_move_y = np.sin(random_angles) * move_distance  # Random movement in y
+        if random_dot_behaviour == 'random_walk':
+            # Compute random movement vectors
+            random_angles = np.random.rand(len(random_indices)) * 2 * np.pi  # Random angles for random dots
+            random_move_x = np.cos(random_angles) * move_distance  # Random movement in x
+            random_move_y = np.sin(random_angles) * move_distance  # Random movement in y
+            # Move random dots
+            dot_positions[random_indices, 0] += random_move_x
+            dot_positions[random_indices, 1] += random_move_y
+            # Combine movement vectors into one array for all dots
+            move_x = np.zeros_like(dot_positions[:, 0])
+            move_y = np.zeros_like(dot_positions[:, 1])
+            move_x[coherent_indices] = coherent_move_x
+            move_y[coherent_indices] = coherent_move_y
+            move_x[random_indices] = random_move_x
+            move_y[random_indices] = random_move_y
 
-        # Move random dots
-        dot_positions[random_indices, 0] += random_move_x
-        dot_positions[random_indices, 1] += random_move_y
+        else:
+            # Reposition random dots within the aperture instead of doing random walk
+            random_angles = np.random.rand(len(random_indices)) * 2 * np.pi  # Random angles for dot direction
+            random_radii = np.sqrt(np.random.rand(len(random_indices))) * (aperture_diameter / 2)  # Random radii
+            random_x_positions = random_radii * np.cos(random_angles)  # Convert polar to Cartesian coordinates (x)
+            random_y_positions = random_radii * np.sin(random_angles)  # Convert polar to Cartesian coordinates (y)
+            # Assign new random positions to random dots
+            dot_positions[random_indices, 0] = random_x_positions
+            dot_positions[random_indices, 1] = random_y_positions
+            # Wrap coherent dots that move outside the aperture (random dots don't need wrapping as they are reset)
+            move_x = np.zeros_like(dot_positions[:, 0])
+            move_y = np.zeros_like(dot_positions[:, 1])
+            move_x[coherent_indices] = coherent_move_x
+            move_y[coherent_indices] = coherent_move_y
 
-        # Combine movement vectors into one array for all dots
-        move_x = np.zeros_like(dot_positions[:, 0])
-        move_y = np.zeros_like(dot_positions[:, 1])
-
-        move_x[coherent_indices] = coherent_move_x
-        move_y[coherent_indices] = coherent_move_y
-        move_x[random_indices] = random_move_x
-        move_y[random_indices] = random_move_y
-
-        # Wrap dots that move outside the aperture
         dot_positions = wrap_around_circular(dot_positions, move_x, move_y)
 
         # Compute dot opacities (transparent for dots in the no-dot zone, visible otherwise)
@@ -161,7 +186,7 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
     frame_count = 0
     while not event.getKeys():
         # Select the appropriate dot set for the current frame
-        current_set = frame_count % 3
+        current_set = frame_count % n_dot_sets
 
         # Update dots for the current set and get their opacities
         dot_sets[current_set], dot_opacities = update_dots(dot_sets[current_set])
@@ -172,6 +197,9 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
 
         # Draw the fixation cross
         fixation.draw()
+
+        # Draw the aperture outline (white circle)
+        aperture_outline.draw()
 
         # Draw the dots
         dot_stim.draw()
@@ -189,4 +217,4 @@ def create_dot_motion_stimulus_3_sets(win, motion_direction, motion_coherence):
     win.close()
 
 
-create_dot_motion_stimulus_3_sets(win, motion_direction=180, motion_coherence=0.5)
+create_dot_motion_stimulus_n_sets(win, motion_direction=180, motion_coherence=0.5)
