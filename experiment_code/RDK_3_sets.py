@@ -230,5 +230,5 @@ win = visual.Window(
 #     'speed': 2
 # }
 # frame_rate = win.getActualFrameRate()
-# create_dot_motion_stimulus_n_sets(win, frame_rate, 180, 0.5, dot_parameters)
+# create_dot_motion_stimulus_n_sets(win, frame_rate, 180, 0.6, dot_parameters)
 # win.close()
