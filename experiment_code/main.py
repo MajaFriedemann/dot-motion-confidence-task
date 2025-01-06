@@ -5,6 +5,7 @@ import numpy as np
 import os
 from datetime import datetime
 from psychopy import gui, visual, core, data, event, monitors
+import pandas as pd  # Import pandas for reading Excel files
 import ctypes  # for hiding the mouse cursor on Windows
 
 import helper_functions as hf
@@ -31,16 +32,51 @@ if not dlg.OK:
 
 # TASK VARIABLES
 gv = dict(
-    n_trials=300,  # number of trials - 300
+    n_trials=5,  # number of trials - 300
     dot_display_time=1.0,  # duration of dot display, 1 second
     inter_trial_interval=[0.5, 1.0],  # duration of inter-trial interval, uniform distribution, 0.5-1 second
     response_keys=['o', 'p'],  # keys for CW and CCW responses
-    low_coherence=0.2,  # low coherence - needs to be calibrated to the participant
-    high_coherence=0.4,  # high coherence - needs to be calibrated to the participant
-    low_distance=10,  # low distance - needs to be calibrated to the participant
-    high_distance=30,  # high distance - needs to be calibrated to the participant
+    low_coherence=None,  # low coherence - will be calibrated to the participant
+    high_coherence=None,  # high coherence - will be calibrated to the participant
+    low_distance=None,  # low distance - will be calibrated to the participant
+    high_distance=None,  # high distance - will be calibrated to the participant
     bonus_factor=0.1  # bonus factor times correct responses
 )
+
+###################################
+# LOAD CALIBRATION DATA
+###################################
+def load_calibration_data(participant_number):
+    # Define the directory and locate the file
+    calibration_dir = os.path.join(os.getcwd(), "calibration_data")  # Ensure full path to calibration_data
+    file_prefix = f"{participant_number}_"
+    # Search for the file starting with the participant number and ending with .csv
+    for file_name in os.listdir(calibration_dir):
+        if file_name.startswith(file_prefix) and file_name.endswith(".csv"):
+            file_path = os.path.join(calibration_dir, file_name)
+            break
+    else:
+        raise FileNotFoundError(f"No calibration file found for participant {participant_number} in {calibration_dir}")
+    # Load the CSV file
+    df = pd.read_csv(file_path)
+    # Ensure the required columns are present
+    required_columns = ['low_coherence', 'high_coherence', 'low_distance', 'high_distance']
+    if not all(col in df.columns for col in required_columns):
+        raise ValueError(
+            f"Calibration file for participant {participant_number} is missing required columns: {required_columns}")
+    # Read the values (assuming the first row contains the calibration data)
+    return {
+        'low_coherence': df.loc[0, 'low_coherence'],
+        'high_coherence': df.loc[0, 'high_coherence'],
+        'low_distance': df.loc[0, 'low_distance'],
+        'high_distance': df.loc[0, 'high_distance']
+    }
+participant_number = expInfo['participant nr']
+calibration_data = load_calibration_data(participant_number)
+gv['low_coherence'] = calibration_data['low_coherence']
+gv['high_coherence'] = calibration_data['high_coherence']
+gv['low_distance'] = calibration_data['low_distance']
+gv['high_distance'] = calibration_data['high_distance']
 
 ###################################
 # DATA SAVING
@@ -93,6 +129,9 @@ win = visual.Window(
     monitor=mon
 )
 frame_rate = win.getActualFrameRate()
+if frame_rate is None or frame_rate < 1:
+    print("Warning: Could not determine frame rate. Defaulting to 60 Hz.")
+    frame_rate = 60  # Default to 60 Hz
 
 # MOUSE
 win.setMouseVisible(False)
@@ -200,7 +239,7 @@ correct_responses = 0
 for trial in range(gv['n_trials']):
     trial += 1
     # Set the direction, coherence, and reference direction for the trial
-    direction = round(np.random.uniform(1, 360), 2)  # randomly choose motion direction
+    direction = round(np.random.uniform(1, 360), 0)  # randomly choose motion direction
 
     if np.random.choice([True, False]):  # randomly choose low or high coherence
         coherence = gv['high_coherence']  # this needs to be calibrated to the participant
@@ -228,7 +267,7 @@ for trial in range(gv['n_trials']):
     hf.exit_q(win)
 
     # Show dots
-    create_dot_motion_stimulus_n_sets(win, frame_rate, 180, 0.5, dot_parameters)
+    create_dot_motion_stimulus_n_sets(win, frame_rate, direction, coherence, dot_parameters)
 
     # Show reference direction
     arc_CW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2, reference, reference - 90, 'blue')
@@ -292,7 +331,8 @@ instructions_txt.text = ("Well done! You have completed the task. \n\n"
 instructions_txt.draw()
 win.flip()
 hf.exit_q(win)
-event.waitKeys(keyList=['space'])  # show instructions until space is pressed
+# event.waitKeys(keyList=['space'])  # show instructions until space is pressed
+core.wait(10)
 event.clearEvents()
 
 # Close window
