@@ -204,19 +204,19 @@ def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_
 
 
 
-# WINDOW
-mon = monitors.Monitor('maja_dell_1')
-win = visual.Window(
-    size=(1920, 1080),
-    units="deg",
-    screen=1,
-    fullscr=True,
-    color=(0.001, 0.001, 0.001),
-    colorSpace='rgb',
-    monitor=mon
-)
-
-
+# # WINDOW
+# mon = monitors.Monitor('maja_dell_1')
+# win = visual.Window(
+#     size=(1920, 1080),
+#     units="deg",
+#     screen=1,
+#     fullscr=True,
+#     color=(0.001, 0.001, 0.001),
+#     colorSpace='rgb',
+#     monitor=mon
+# )
+#
+#
 # # Create dot motion stimulus
 # # Trying out
 # dot_parameters = {

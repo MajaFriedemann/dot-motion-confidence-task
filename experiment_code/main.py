@@ -87,7 +87,7 @@ win = visual.Window(
     size=(1920, 1080),
     units="deg",
     screen=1,
-    fullscr=True,
+    fullscr=False,
     color=(0.001, 0.001, 0.001),
     colorSpace='rgb',
     monitor=mon
@@ -254,7 +254,7 @@ for trial in range(gv['n_trials']):
         correct_responses += 1
 
     # Response visual feedback
-    stimuli = [aperture_outline, arc_CW, arc_CCW, ref_line, fixation]
+    stimuli = [aperture_outline, fixation]
     hf.draw_all_stimuli(win, stimuli, 0.5)
     hf.exit_q(win)
 
