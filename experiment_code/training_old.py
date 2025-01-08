@@ -153,7 +153,8 @@ instructions_txt.text = (
     "In this task, you will see a cloud of dots moving in a certain direction. "
     "Afterward, a reference direction will be shown. Your task is to decide "
     "whether the overall direction of the dots was towards to the BLUE or the ORANGE side of the reference. "
-    "To make your choice, press the BLUE or ORANGE button on the keyboard. The fixation cross will change to the colour of your choice.\n\n\n\n"
+    "To make your choice, press the BLUE (with your left hand) or ORANGE (with your right hand) button on the keyboard. "
+    "The fixation cross will change to the colour of your choice.\n\n\n\n"
     "Press SPACE to continue."
 )
 instructions_txt.draw()

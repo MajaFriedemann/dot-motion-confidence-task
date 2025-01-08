@@ -35,7 +35,7 @@ gv = dict(
     n_trials=5,  # number of trials - 300
     dot_display_time=1.0,  # duration of dot display, 1 second
     inter_trial_interval=[0.5, 1.0],  # duration of inter-trial interval, uniform distribution, 0.5-1 second
-    response_keys=['o', 'p'],  # keys for CW and CCW responses
+    response_keys=['d', 'k'],  # keys for CW and CCW responses
     low_coherence=None,  # low coherence - will be calibrated to the participant
     high_coherence=None,  # high coherence - will be calibrated to the participant
     low_distance=None,  # low distance - will be calibrated to the participant
@@ -89,6 +89,7 @@ info = dict(
     date=data.getDateStr(),
     start_time=None,
     end_time=None,
+    duration=None,
 
     participant=expInfo['participant nr'],
     age=expInfo['age'],
@@ -103,6 +104,8 @@ info = dict(
     response_time=None,  # response time
     confidence_rating=None,  # confidence rating
     confidence_response_time=None,  # confidence response time
+
+    bonus_payment=None  # bonus
 )
 
 # start a csv file for saving the participant data
@@ -204,7 +207,8 @@ instructions_txt.text = (
     "As a reminder, you will see a cloud of dots moving in a certain direction. "
     "After that, a reference direction will be shown. Your task is to decide "
     "whether the overall direction of the dots was closer to the BLUE or the ORANGE side of the reference. "
-    "To make your choice, press the BLUE or ORANGE button on the keyboard. The fixation cross will change to the colour of your choice.\n\n\n\n"
+    "To make your choice, press the BLUE (with your left hand) or ORANGE (with your right hand) button on the keyboard. "
+    "The fixation cross will change to the colour of your choice.\n\n\n\n"
     "Press SPACE to continue."
 )
 instructions_txt.draw()
@@ -238,7 +242,9 @@ correct_responses = 0
 
 for trial in range(gv['n_trials']):
     trial += 1
-    # Set the direction, coherence, and reference direction for the trial
+    # Set the signal_delay, direction, coherence, and reference direction for the trial
+    signal_delay = np.random.uniform(0.3, 0.8)  # randomly choose signal delay
+
     direction = round(np.random.uniform(1, 360), 0)  # randomly choose motion direction
 
     if np.random.choice([True, False]):  # randomly choose low or high coherence
@@ -267,7 +273,7 @@ for trial in range(gv['n_trials']):
     hf.exit_q(win)
 
     # Show dots
-    create_dot_motion_stimulus_n_sets(win, frame_rate, direction, coherence, dot_parameters)
+    create_dot_motion_stimulus_n_sets(win, frame_rate, direction, coherence, signal_delay, dot_parameters)
 
     # Show reference direction
     arc_CW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2, reference, reference - 90, 'blue')
@@ -323,18 +329,38 @@ for trial in range(gv['n_trials']):
     datafile.flush()
 
 # END
-info['end_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
-bonus = correct_responses * gv['bonus_factor']
+end_time = datetime.now()
+info['end_time'] = end_time.strftime("%Y-%m-%d %H:%M:%S")
+duration = end_time - start_time
+info['duration'] = str(duration)
+bonus = round(correct_responses * gv['bonus_factor'], 1)
+info['bonus_payment'] = bonus
+
 instructions_txt.text = ("Well done! You have completed the task. \n\n"
                          f"You made {correct_responses} correct responses out of {gv['n_trials']} trials. \n\n"
                          f"Your bonus is £{bonus}. \n\n")
 instructions_txt.draw()
 win.flip()
 hf.exit_q(win)
-# event.waitKeys(keyList=['space'])  # show instructions until space is pressed
-core.wait(10)
-event.clearEvents()
+core.wait(10)  # Pause to display the final message
 
-# Close window
+# Update the last trial with end time, duration, and bonus payment
+if info['trial_count'] > 0:  # Ensure at least one trial was completed
+    # Reopen the file in read/write mode
+    datafile.close()
+    with open(filename + '.csv', 'r+') as datafile:
+        # Read the current content of the file
+        lines = datafile.readlines()
+
+        # Replace the last line with the updated trial info
+        lines[-1] = ','.join([str(info[var]) for var in log_vars]) + '\n'
+
+        # Write back the modified content
+        datafile.seek(0)
+        datafile.writelines(lines)
+        datafile.flush()
+
+# Close the window
 win.close()
 core.quit()
+

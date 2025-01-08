@@ -1,0 +1,1 @@
+# copy main.py but set coherences and distances to something easy instead of taking the calibrated values, also include more instructions (see training_old.py)

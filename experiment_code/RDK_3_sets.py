@@ -1,7 +1,7 @@
 import numpy as np
 from psychopy import visual, core, monitors, event
 
-def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_coherence, parameters):
+def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_coherence, signal_delay, parameters):
     """
     Create a random dot motion stimulus with n sets of dots, with the specified motion direction and coherence.
 
@@ -9,6 +9,7 @@ def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_
     - win: the PsychoPy window in which to display the stimulus
     - motion_direction: the direction of coherent motion (in degrees)
     - motion_coherence: the proportion of dots moving in the coherent direction (0.0 to 1.0)
+    - signal_delay: the delay between the onset of the stimulus and the onset of the coherent motion signal (in seconds)
     - parameters: dictionary of parameters including 'n_dot_sets', 'random_dot_behaviour', 'duration', 'aperture_diameter',
                   'fixation_diameter', 'dot_diameter', 'dot_density', and 'speed'
     """
@@ -30,6 +31,9 @@ def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_
     frame_duration = 1.0 / frame_rate  # e.g., 60Hz --> 1/60 = 0.0167 seconds
     speed = speed * n_dot_sets  # Adjust speed for multiple sets of dots
     move_distance = speed * frame_duration  # Distance a coherent dot moves in one frame
+    signal_delay_frames = int(signal_delay / frame_duration)
+    duration_frames = int(duration / frame_duration)
+    total_frames = signal_delay_frames + duration_frames
 
     # Create a circular aperture outline (white)
     aperture_outline = visual.Circle(
@@ -120,7 +124,7 @@ def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_
         return opacities
 
     # Update dot positions for each frame
-    def update_dots(dot_positions):
+    def update_dots(dot_positions, coherent_motion=False):
         """
         Update the positions of the dots and reshuffle the coherent and random assignment each frame.
         """
@@ -133,8 +137,9 @@ def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_
         coherent_move_y = np.sin(motion_direction_rad) * move_distance
 
         # Move coherent dots
-        dot_positions[coherent_indices, 0] += coherent_move_x
-        dot_positions[coherent_indices, 1] += coherent_move_y
+        if coherent_motion:
+            dot_positions[coherent_indices, 0] += coherent_move_x
+            dot_positions[coherent_indices, 1] += coherent_move_y
 
         if random_dot_behaviour == 'random_walk':
             # Compute random movement vectors
@@ -176,12 +181,15 @@ def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_
 
     # Main loop: Present the stimulus until a key is pressed
     frame_count = 0
-    while frame_count * frame_duration < duration:
+    while frame_count < total_frames:
         # Select the appropriate dot set for the current frame
         current_set = frame_count % n_dot_sets
 
+        # Coherent motion starts after signal_delay_frames
+        coherent_motion = frame_count >= signal_delay_frames
+
         # Update dots for the current set and get their opacities
-        dot_sets[current_set], dot_opacities = update_dots(dot_sets[current_set])
+        dot_sets[current_set], dot_opacities = update_dots(dot_sets[current_set], coherent_motion)
 
         # Update the dot stimulus with the current set's positions
         dot_stim.xys = dot_sets[current_set]  # Update dot positions
@@ -230,5 +238,5 @@ def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_
 #     'speed': 2
 # }
 # frame_rate = win.getActualFrameRate()
-# create_dot_motion_stimulus_n_sets(win, frame_rate, 180, 0.6, dot_parameters)
+# create_dot_motion_stimulus_n_sets(win, frame_rate, 180, 0.6, 2, dot_parameters)
 # win.close()
