@@ -178,6 +178,8 @@ def get_confidence_rating(win, gv, EEG_config=None):
 
     # Record the start time
     start_time = time.time()
+    if EEG_config is not None:
+        EEG_config.send_trigger(EEG_config.triggers['confidence_rating_onset'])
 
     break_loop = False
     while not break_loop:
