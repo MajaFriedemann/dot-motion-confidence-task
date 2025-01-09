@@ -45,11 +45,12 @@ gv = dict(
     inter_trial_interval=[0.5, 1.0],  # uniform distribution from 0.5–1s
     response_keys=['d', 'k'],  # keys for blue/orange responses
     low_coherence=None,  # from calibration data
-    high_coherence=None, # from calibration data
-    low_distance=None,   # from calibration data
+    high_coherence=None,  # from calibration data
+    low_distance=None,  # from calibration data
     high_distance=None,  # from calibration data
-    bonus_factor=0.1     # multiply by number of correct trials
+    bonus_factor=0.01  # multiply by number of correct trials
 )
+
 
 ###################################
 # LOAD CALIBRATION DATA
@@ -73,12 +74,14 @@ def load_calibration_data(participant_number):
             f"Calibration file for participant {participant_number} is missing required columns: {required_columns}"
         )
 
+    last_row = df.iloc[-1]
     return {
-        'low_coherence': df.loc[0, 'low_coherence'],
-        'high_coherence': df.loc[0, 'high_coherence'],
-        'low_distance': df.loc[0, 'low_distance'],
-        'high_distance': df.loc[0, 'high_distance']
+        'low_coherence': last_row['low_coherence'],
+        'high_coherence': last_row['high_coherence'],
+        'low_distance': last_row['low_distance'],
+        'high_distance': last_row['high_distance']
     }
+
 
 participant_number = expInfo['participant nr']
 calibration_data = load_calibration_data(participant_number)
@@ -107,23 +110,23 @@ info = dict(
     trial_count=0,
 
     # coherence/distance numeric & string labels
-    coherence=None,         # numeric coherence
-    coherence_level=None,   # 'low' or 'high'
-    distance=None,          # numeric distance
-    distance_level=None,    # 'low' or 'high'
+    coherence=None,  # numeric coherence
+    coherence_level=None,  # 'low' or 'high'
+    distance=None,  # numeric distance
+    distance_level=None,  # 'low' or 'high'
 
-    direction=None,         # motion direction (numeric)
-    reference=None,         # numeric angle for boundary
-    signal_delay=None,      # in seconds
+    direction=None,  # motion direction (numeric)
+    reference=None,  # numeric angle for boundary
+    signal_delay=None,  # in seconds
 
-    correct_response=None,        # 'CW' or 'CCW'
-    participant_response=None,    # 'CW' or 'CCW'
-    correct=None,                # True/False
+    correct_response=None,  # 'CW' or 'CCW'
+    participant_response=None,  # 'CW' or 'CCW'
+    correct=None,  # True/False
     correct_response_colour=None,
     participant_response_colour=None,
 
-    response_time=None,           # time to respond
-    confidence_rating=None,       # 50–100
+    response_time=None,  # time to respond
+    confidence_rating=None,  # 50–100
     confidence_response_time=None,
 
     bonus_payment=None
@@ -348,8 +351,10 @@ for trial in range(gv['n_trials']):
         arc_CW_color = 'blue'
         arc_CCW_color = 'orange'
 
-    arc_CW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2, reference_angle, reference_angle - 90, arc_CW_color)
-    arc_CCW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2, reference_angle, reference_angle + 90, arc_CCW_color)
+    arc_CW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2, reference_angle, reference_angle - 90,
+                         arc_CW_color)
+    arc_CCW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2, reference_angle, reference_angle + 90,
+                          arc_CCW_color)
     ref_line = visual.Line(
         win,
         start=((dot_parameters['aperture_diameter'] / 2 - 1) * np.cos(np.deg2rad(reference_angle)),

@@ -1,5 +1,5 @@
 """
-helper functions for main.py and staircase.py
+helper functions for main.py, training.py and calibration.py
 
 Maja Friedemann 2025
 """

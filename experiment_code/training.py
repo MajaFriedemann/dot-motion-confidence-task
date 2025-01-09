@@ -388,7 +388,7 @@ for trial in range(gv['n_trials']):
     else:
         fixation.color = 'red'
     stimuli = [aperture_outline, fixation]
-    hf.draw_all_stimuli(win, stimuli, 0.8)
+    hf.draw_all_stimuli(win, stimuli, 1)
     hf.exit_q(win)
 
     # 8) Confidence rating (random 1/3 of trials)
