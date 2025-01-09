@@ -1,7 +1,7 @@
 import numpy as np
 from psychopy import visual, core, monitors, event
 
-def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_coherence, signal_delay, parameters):
+def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_coherence, signal_delay, parameters, EEG_config=None):
     """
     Create a random dot motion stimulus with n sets of dots, with the specified motion direction and coherence.
 
@@ -187,6 +187,8 @@ def create_dot_motion_stimulus_n_sets(win, frame_rate, motion_direction, motion_
 
         # Coherent motion starts after signal_delay_frames
         coherent_motion = frame_count >= signal_delay_frames
+        if EEG_config is not None and frame_count == signal_delay_frames:
+            EEG_config.send_trigger(EEG_config.triggers['signal_onset'])
 
         # Update dots for the current set and get their opacities
         dot_sets[current_set], dot_opacities = update_dots(dot_sets[current_set], coherent_motion)

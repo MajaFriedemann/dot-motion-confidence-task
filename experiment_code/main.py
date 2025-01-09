@@ -1,3 +1,9 @@
+"""
+random dot motion task with confidence ratings
+
+Maja Friedemann 2025
+"""
+
 ###################################
 # IMPORT PACKAGES
 ###################################
@@ -147,7 +153,14 @@ if os.name == 'nt':  # Check if the OS is Windows
 # EEG TRIGGERS
 triggers = dict(
     experiment_start=1,
-    experiment_end=20
+    trial_start=2,
+    dots_onset=3,
+    signal_onset=4,
+    reference_onset=5,
+    response_made=6,
+    confidence_rating_onset=7,
+    confidence_response_made=8,
+    experiment_end=9
 )
 # Create an EEGConfig object
 send_triggers = expInfo['eeg (y/n)'].lower() == 'y'
@@ -241,6 +254,7 @@ info['start_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
 correct_responses = 0
 
 for trial in range(gv['n_trials']):
+    EEG_config.send_trigger(EEG_config.triggers['trial_start'])
     trial += 1
     # Set the signal_delay, direction, coherence, and reference direction for the trial
     signal_delay = np.random.uniform(0.3, 0.8)  # randomly choose signal delay
@@ -273,28 +287,48 @@ for trial in range(gv['n_trials']):
     hf.exit_q(win)
 
     # Show dots
-    create_dot_motion_stimulus_n_sets(win, frame_rate, direction, coherence, signal_delay, dot_parameters)
+    EEG_config.send_trigger(EEG_config.triggers['dots_onset'])
+    create_dot_motion_stimulus_n_sets(win, frame_rate, direction, coherence, signal_delay, dot_parameters, EEG_config=EEG_config if send_triggers else None)
+
+    # Determine if the reference direction is in the left or right hemisphere
+    if 0 <= reference < 180:  # Reference is in the top half of the circle
+        arc_CW_color = 'orange'  # right of reference
+        arc_CCW_color = 'blue'  # left of reference
+    else:  # Reference is on the bottom half of the circle
+        arc_CW_color = 'blue'  # left of reference
+        arc_CCW_color = 'orange'  # right of reference
 
     # Show reference direction
-    arc_CW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2, reference, reference - 90, 'blue')
-    arc_CCW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2, reference, reference + 90, 'orange')
+    arc_CW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2, reference, reference - 90, arc_CW_color)
+    arc_CCW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2, reference, reference + 90, arc_CCW_color)
     ref_line = visual.Line(win, start=((dot_parameters['aperture_diameter'] / 2 - 1) * np.cos(np.deg2rad(reference)),
                                        (dot_parameters['aperture_diameter'] / 2 - 1) * np.sin(np.deg2rad(reference))),
                            end=((dot_parameters['aperture_diameter'] / 2 + 1) * np.cos(np.deg2rad(reference)),
                                 (dot_parameters['aperture_diameter'] / 2 + 1) * np.sin(np.deg2rad(reference))),
                            lineColor='white', lineWidth=6)
     stimuli = [aperture_outline, arc_CW, arc_CCW, ref_line, fixation]
+    EEG_config.send_trigger(EEG_config.triggers['reference_onset'])
     hf.draw_all_stimuli(win, stimuli)
     hf.exit_q(win)
 
     # Wait for participant response
     response, response_time = hf.check_key_press(win, gv['response_keys'])
-    if response == gv['response_keys'][0]:
-        chosen_direction = 'CW'
-        fixation.color = 'blue'
-    elif response == gv['response_keys'][1]:
-        chosen_direction = 'CCW'
-        fixation.color = 'orange'
+    EEG_config.send_trigger(EEG_config.triggers['response_made'])
+    # Dynamically map response keys to left (blue) or right (orange) based on reference position
+    if 0 <= reference < 180:  # Reference is in the top half of the circle
+        if response == gv['response_keys'][0]:  # Left response key
+            chosen_direction = 'CCW'
+            fixation.color = 'blue'
+        elif response == gv['response_keys'][1]:  # Right response key
+            chosen_direction = 'CW'
+            fixation.color = 'orange'
+    else:  # Reference is on the bottom half of the circle
+        if response == gv['response_keys'][0]:  # Left response key
+            chosen_direction = 'CW'
+            fixation.color = 'blue'
+        elif response == gv['response_keys'][1]:  # Right response key
+            chosen_direction = 'CCW'
+            fixation.color = 'orange'
     if chosen_direction == reference_direction:
         correct_responses += 1
 
@@ -307,7 +341,7 @@ for trial in range(gv['n_trials']):
     confidence_rating = None
     confidence_response_time = None
     if np.random.choice([True, False, False]):
-        confidence_rating, confidence_response_time = hf.get_confidence_rating(win, gv)
+        confidence_rating, confidence_response_time = hf.get_confidence_rating(win, gv, EEG_config=EEG_config if send_triggers else None)
 
     # Clear the stimuli
     fixation.color = 'white'
