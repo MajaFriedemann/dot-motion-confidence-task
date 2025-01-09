@@ -341,6 +341,7 @@ for trial in range(gv['n_trials']):
     confidence_rating = None
     confidence_response_time = None
     if np.random.choice([True, False, False]):
+        EEG_config.send_trigger(EEG_config.triggers['confidence_rating_onset'])
         confidence_rating, confidence_response_time = hf.get_confidence_rating(win, gv, EEG_config=EEG_config if send_triggers else None)
 
     # Clear the stimuli
