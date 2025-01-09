@@ -40,7 +40,7 @@ if not dlg.OK:
 # TASK VARIABLES
 ###################################
 gv = dict(
-    n_trials=5,  # number of trials (set to 300 in actual experiment)
+    n_trials=300,  # number of trials (set to 300 in actual experiment)
     dot_display_time=1.0,  # duration of dot display (in seconds)
     inter_trial_interval=[0.5, 1.0],  # uniform distribution from 0.5–1s
     response_keys=['d', 'k'],  # keys for blue/orange responses
@@ -270,10 +270,10 @@ event.waitKeys(keyList=['space'])
 event.clearEvents()
 
 instructions_txt.text = (
-    "In some trials, you will be asked to rate your confidence in your decision on a scale from 50% to 100%.\n\n"
+    "In some trials, you will be asked to rate your confidence in your last decision on a scale from 50% to 100%.\n\n"
     "The slider will start at a random position. Use the response keys to move the slider, and press SPACE to confirm your response.\n\n"
     "To maximize your bonus, aim to make as many correct decisions as possible and accurately estimate your confidence.\n\n\n\n"
-    "Press SPACE to begin."
+    f"There will be {gv['n_trials']} trials. Press SPACE to begin."
 )
 instructions_txt.draw()
 win.flip()
