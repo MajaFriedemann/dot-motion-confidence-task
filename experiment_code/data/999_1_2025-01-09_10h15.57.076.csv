@@ -1,2 +1,0 @@
-expName,curec_ID,session_nr,date,start_time,end_time,duration,participant,age,gender,trial_count,coherence,distance,direction,reference_direction,response,response_time,confidence_rating,confidence_response_time,bonus_payment
-confidence-pgACC-TUS,R88533/RE002,1,2025-01-09_10h15.57.076,2025-01-09 10:15:59,None,None,999,,,1,0.4,10,186.0,CCW,CCW,8.080703299987363,90,2.448216199874878,None

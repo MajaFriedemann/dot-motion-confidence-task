@@ -44,7 +44,7 @@ if not dlg.OK:
 # TASK VARIABLES
 ###################################
 gv = dict(
-    n_trials=15,  # number of trials for training
+    n_trials=20,  # number of trials for training
     dot_display_time=1.0,  # duration of dot display (in seconds)
     inter_trial_interval=[0.5, 1.0],  # uniform distribution from 0.5–1s
     response_keys=['d', 'k'],  # keys for blue/orange responses
@@ -52,7 +52,6 @@ gv = dict(
     high_coherence=0.7,  # easy for training
     low_distance=30,   # easy for training
     high_distance=50,  # easy for training
-    bonus_factor=0.1     # multiply by number of correct trials
 )
 
 ###################################
@@ -93,8 +92,6 @@ info = dict(
     response_time=None,           # time to respond
     confidence_rating=None,       # 50–100
     confidence_response_time=None,
-
-    bonus_payment=None
 )
 
 # Create a CSV file with these columns in order
@@ -222,43 +219,57 @@ hf.exit_q(win)
 event.waitKeys(keyList=['space'])
 event.clearEvents()
 
-# Task
+# Task introduction
 instructions_txt.text = (
-    "In this task, you will see a cloud of dots moving in a certain direction. "
-    "Afterward, a reference direction will be shown. Your task is to decide "
-    "whether the overall direction of the dots was towards to the BLUE or the ORANGE side of the reference. "
-    "To make your choice, press the BLUE (with your left hand) or ORANGE (with your right hand) button on the keyboard. "
-    "The fixation cross will change to the colour of your choice.\n\n\n\n"
-    "Press SPACE to continue."
+    "Welcome to the dot motion task! In this experiment, you'll see moving dots appearing within a circle. "
+    "Your task will be to carefully observe their overall direction of motion and make a judgment about it afterwards. "
+    "Try to keep your eyes focused on the central cross throughout each trial, as this will help you perceive the motion better.\n\n"
+    "Press SPACE to learn about making your responses."
 )
 instructions_txt.draw()
 win.flip()
-hf.exit_q(win)
-event.waitKeys(keyList=['space'])  # show instructions until space is pressed
-event.clearEvents()
-
-instructions_txt.text = (
-    "In some trials, you will be asked to rate your confidence in your last decision on a scale from 50% to 100%.\n\n"
-    "The slider will start at a random position. Use the response keys to move the slider, and press SPACE to confirm your response.\n\n"
-    "To maximize your bonus, aim to make as many correct decisions as possible and accurately estimate your confidence.\n\n\n\n"
-    "Press SPACE to begin."
-)
-instructions_txt.draw()
-win.flip()
-hf.exit_q(win)
 event.waitKeys(keyList=['space'])
 event.clearEvents()
 
+# Response instructions
 instructions_txt.text = (
-    "You will receive feedback during this practice. If your choice is correct, the fixation cross will turn green. "
-    "If your choice is incorrect, the fixation cross will turn red.\n\n"
-    f"There will be {gv['n_trials']} practice trials, which should be relatively easy.\n\n\n\n"
-    "Press SPACE to begin."
+    "After the dots disappear, you'll see a reference line that divides the circle into two zones - one blue and one orange. "
+    "Your task is to indicate whether the dots were moving toward the blue or orange zone. "
+    "To respond, you'll use two keys on the keyboard: press the BLUE key with your left hand to choose blue, or press the ORANGE key with your "
+    "right hand to choose orange. After you make your choice, the central cross will change colour to show your selection.\n\n"
+    "Press SPACE to learn about confidence ratings."
 )
 instructions_txt.draw()
 win.flip()
-hf.exit_q(win)
-event.waitKeys(keyList=['space'])  # show instructions until space is pressed
+event.waitKeys(keyList=['space'])
+event.clearEvents()
+
+# Confidence instructions
+instructions_txt.text = (
+    "Every now and then, you'll be asked how confident you are in your decision. "
+    "You'll see a scale ranging from 50% to 100%. A rating of 50% means you were completely guessing on your most recent trial, "
+    "while 100% means you were absolutely certain about the responseq. "
+    "Use the same blue and orange response keys to adjust the slider position to match your confidence level, "
+    "then press SPACE to confirm your rating.\n\n"
+    "Press SPACE to learn about the practice session."
+)
+instructions_txt.draw()
+win.flip()
+event.waitKeys(keyList=['space'])
+event.clearEvents()
+
+# Practice session instructions
+instructions_txt.text = (
+    f"You will now complete {gv['n_trials']} practice trials to help you get familiar with the task. "
+    "During these practice trials, you'll receive feedback after each response. The central cross will turn "
+    "green if your answer was correct, or red if it was incorrect. Try to focus on the overall pattern of the "
+    "dots' motion and respond as accurately as you can. When rating your confidence, be honest about how sure "
+    "you felt about each decision.\n\n"
+    "Press SPACE when you're ready to begin."
+)
+instructions_txt.draw()
+win.flip()
+event.waitKeys(keyList=['space'])
 event.clearEvents()
 
 ###################################
@@ -443,8 +454,6 @@ instructions_txt.text = (
 )
 instructions_txt.draw()
 win.flip()
-hf.exit_q(win)
-core.wait(10)
 
 # Overwrite the final row with experiment-level info
 if info['trial_count'] > 0:
@@ -457,5 +466,7 @@ if info['trial_count'] > 0:
         datafile.writelines(lines)
         datafile.flush()
 
+hf.exit_q(win)
+core.wait(10)
 win.close()
 core.quit()

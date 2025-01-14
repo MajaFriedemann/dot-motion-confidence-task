@@ -157,7 +157,7 @@ def get_confidence_rating(win, gv, EEG_config=None):
     # Question prompt
     slider_question_text = visual.TextStim(
         win=win,
-        text='How confident are you?',
+        text='How confident are you in your last response?',
         height=1,
         pos=(0, 5),
         color='white',

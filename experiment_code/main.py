@@ -48,7 +48,7 @@ gv = dict(
     high_coherence=None,  # from calibration data
     low_distance=None,  # from calibration data
     high_distance=None,  # from calibration data
-    bonus_factor=0.01  # multiply by number of correct trials
+    bonus_factor=0.02  # multiply by number of correct trials
 )
 
 
@@ -68,20 +68,29 @@ def load_calibration_data(participant_number):
         )
 
     df = pd.read_csv(file_path)
-    required_columns = ['low_coherence', 'high_coherence', 'low_distance', 'high_distance']
+
+    # Force these columns to numeric (float)
+    required_columns = [
+        'final_low_coherence', 'final_high_coherence',
+        'final_low_distance', 'final_high_distance'
+    ]
     if not all(col in df.columns for col in required_columns):
         raise ValueError(
-            f"Calibration file for participant {participant_number} is missing required columns: {required_columns}"
+            f"Calibration file for participant {participant_number} "
+            f"is missing required columns: {required_columns}"
         )
+
+    # Convert the columns to float, in case they're read as strings
+    for col in required_columns:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
 
     last_row = df.iloc[-1]
     return {
-        'low_coherence': last_row['low_coherence'],
-        'high_coherence': last_row['high_coherence'],
-        'low_distance': last_row['low_distance'],
-        'high_distance': last_row['high_distance']
+        'low_coherence': float(last_row['final_low_coherence']),
+        'high_coherence': float(last_row['final_high_coherence']),
+        'low_distance': float(last_row['final_low_distance']),
+        'high_distance': float(last_row['final_high_distance'])
     }
-
 
 participant_number = expInfo['participant nr']
 calibration_data = load_calibration_data(participant_number)
@@ -257,30 +266,54 @@ hf.exit_q(win)
 event.waitKeys(keyList=['space'])
 event.clearEvents()
 
+# Task introduction
 instructions_txt.text = (
-    "You are now ready for the confidence task.\n\n"
-    "As a reminder, you will see a cloud of dots moving in a certain direction. "
-    "After that, a reference direction will be shown. Your task is to decide "
-    "whether the overall direction of the dots was closer to the BLUE or the ORANGE side of the reference. "
-    "To make your choice, press the BLUE (with your left hand) or ORANGE (with your right hand) button on the keyboard. "
-    "The fixation cross will change to the colour of your choice.\n\n\n\n"
+    "Welcome back to the dot motion task! As in your practice sessions, you'll see moving dots appearing within a circle. "
+    "Your task will be to carefully observe their overall direction of motion and make a judgment about it afterwards. "
+    "Try to keep your eyes focused on the central cross throughout each trial, as this will help you perceive the motion better.\n\n"
     "Press SPACE to continue."
 )
 instructions_txt.draw()
 win.flip()
-hf.exit_q(win)
 event.waitKeys(keyList=['space'])
 event.clearEvents()
 
+# Response instructions
 instructions_txt.text = (
-    "In some trials, you will be asked to rate your confidence in your last decision on a scale from 50% to 100%.\n\n"
-    "The slider will start at a random position. Use the response keys to move the slider, and press SPACE to confirm your response.\n\n"
-    "To maximize your bonus, aim to make as many correct decisions as possible and accurately estimate your confidence.\n\n\n\n"
-    f"There will be {gv['n_trials']} trials. Press SPACE to begin."
+    "After the dots disappear, you'll see a reference line that divides the circle into two zones - one blue and one orange. "
+    "Your task is to indicate whether the dots were moving toward the blue or orange zone. "
+    "To respond, you'll use two keys on the keyboard: press the BLUE key with your left hand to choose blue, or press the ORANGE key with your "
+    "right hand to choose orange. After you make your choice, the central cross will change colour to show your selection.\n\n"
+    "Press SPACE to continue."
 )
 instructions_txt.draw()
 win.flip()
-hf.exit_q(win)
+event.waitKeys(keyList=['space'])
+event.clearEvents()
+
+# Confidence instructions
+instructions_txt.text = (
+    "Every now and then, you'll be asked how confident you are in your decision. "
+    "You'll see a scale ranging from 50% to 100%. A rating of 50% means you were completely guessing on your most recent trial, "
+    "while 100% means you were absolutely certain about the responseq. "
+    "Use the same blue and orange response keys to adjust the slider position to match your confidence level, "
+    "then press SPACE to confirm your rating.\n\n"
+    "Press SPACE to continue."
+)
+instructions_txt.draw()
+win.flip()
+event.waitKeys(keyList=['space'])
+event.clearEvents()
+
+# Practice session instructions
+instructions_txt.text = (
+    f"You will complete {gv['n_trials']} trials. Try to focus on the overall pattern of the "
+    "dots' motion and respond as accurately as you can. When rating your confidence, be honest about how sure "
+    "you felt about each decision.\n\n"
+    "Press SPACE when you're ready to begin."
+)
+instructions_txt.draw()
+win.flip()
 event.waitKeys(keyList=['space'])
 event.clearEvents()
 
@@ -451,7 +484,7 @@ end_time = datetime.now()
 info['end_time'] = end_time.strftime("%Y-%m-%d %H:%M:%S")
 duration = end_time - start_time
 info['duration'] = str(duration)
-bonus = round(correct_responses * gv['bonus_factor'], 1)
+bonus = round(correct_responses * gv['bonus_factor'], 2)
 info['bonus_payment'] = bonus
 
 instructions_txt.text = (

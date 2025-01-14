@@ -41,58 +41,34 @@ if not dlg.OK:
     core.quit()
 
 ###################################
-# TASK VARIABLES
+# TASK (STRUCTURE) VARIABLES
 ###################################
+# These do NOT get written to each trial row by default, but define how the task is structured and calibrated
 gv = dict(
-    dot_display_time=1.0,          # duration of dot display (seconds)
+    # Timing and general
+    dot_display_time=1.0,  # duration of dot display (seconds)
     inter_trial_interval=[0.5, 1.0],  # uniform distribution from 0.5–1s
-    response_keys=['d', 'k'],      # keys for blue/orange responses
-    low_coherence=None,            # will be dynamically updated
+    response_keys=['d', 'k'],  # keys for blue/orange responses
+
+    # Staircase / calibration settings
+    n_blocks=8,  # number of alternating calibration blocks 8
+    n_trials_per_block=30,  # total = n_blocks * n_trials_per_block 30
+    medium_coherence=0.3,  # initial guess for "medium" coherence
+    medium_distance=20,  # initial guess for "medium" distance
+    coherence_step=0.01,  # staircase step size for coherence (2-down-1-up)
+    distance_step=1,  # staircase step size for distance (2-down-1-up)
+
+    # Will be updated dynamically after each trial
+    low_coherence=None,
     high_coherence=None,
     low_distance=None,
-    high_distance=None,
-    bonus_factor=0.01               # multiply by number of correct trials
+    high_distance=None
 )
 
 ###################################
-# LOAD CALIBRATION DATA
+# DATA (TO-BE-SAVED) VARIABLES
 ###################################
-def load_calibration_data(participant_number):
-    calibration_dir = os.path.join(os.getcwd(), "calibration_data")
-    file_prefix = f"{participant_number}_"
-    for file_name in os.listdir(calibration_dir):
-        if file_name.startswith(file_prefix) and file_name.endswith(".csv"):
-            file_path = os.path.join(calibration_dir, file_name)
-            break
-    else:
-        raise FileNotFoundError(
-            f"No calibration file found for participant {participant_number} in {calibration_dir}"
-        )
-
-    df = pd.read_csv(file_path)
-    required_columns = ['low_coherence', 'high_coherence', 'low_distance', 'high_distance']
-    if not all(col in df.columns for col in required_columns):
-        raise ValueError(
-            f"Calibration file for participant {participant_number} is missing required columns: {required_columns}"
-        )
-
-    return {
-        'low_coherence': df.loc[0, 'low_coherence'],
-        'high_coherence': df.loc[0, 'high_coherence'],
-        'low_distance': df.loc[0, 'low_distance'],
-        'high_distance': df.loc[0, 'high_distance']
-    }
-
-participant_number = expInfo['participant nr']
-calibration_data = load_calibration_data(participant_number)
-gv['low_coherence'] = calibration_data['low_coherence']
-gv['high_coherence'] = calibration_data['high_coherence']
-gv['low_distance'] = calibration_data['low_distance']
-gv['high_distance'] = calibration_data['high_distance']
-
-###################################
-# DATA SAVING
-###################################
+# These WILL be written into each row of the CSV
 info = dict(
     expName=expName,
     curec_ID=curecID,
@@ -108,43 +84,43 @@ info = dict(
 
     trial_count=0,
 
-    # coherence/distance numeric & string labels
-    coherence=None,
-    coherence_level=None,
-    distance=None,
-    distance_level=None,
+    # Per-trial calibration values
+    coherence=None,  # numeric coherence
+    coherence_level=None,  # 'low', 'medium', or 'high'
+    distance=None,  # numeric distance
+    distance_level=None,  # 'low', 'medium', or 'high'
 
-    direction=None,
-    reference=None,
-    signal_delay=None,
+    direction=None,  # motion direction (numeric)
+    reference=None,  # numeric angle for boundary
+    signal_delay=None,  # in seconds
 
-    correct_response=None,        # 'CW' or 'CCW'
-    participant_response=None,    # 'CW' or 'CCW'
-    correct=None,                 # True/False
+    correct_response=None,  # 'CW' or 'CCW'
+    participant_response=None,  # 'CW' or 'CCW'
+    correct=None,  # True/False
     correct_response_colour=None,
     participant_response_colour=None,
 
-    response_time=None,
-    confidence_rating=None,
+    response_time=None,  # time to respond
+    confidence_rating=None,  # 50–100 (not used in calibration)
     confidence_response_time=None,
 
-    bonus_payment=None,
-
-    # ------------------------------
-    # Staircase parameters
-    # ------------------------------
-    n_blocks=8,            # number of alternating calibration blocks
-    n_trials_per_block=30, # 8 blocks * 30 = 240 trials total
-    medium_coherence=0.3,  # initial guess for "medium" coherence
-    medium_distance=20,    # initial guess for "medium" distance
-    coherence_step=0.01,   # staircase step size for coherence
-    distance_step=1,       # staircase step size for distance
+    # We'll store the final calibration in these fields for the last row
+    final_low_coherence=None,
+    final_high_coherence=None,
+    final_low_distance=None,
+    final_high_distance=None
 )
 
+# List of columns to write in the CSV
 log_vars = list(info.keys())
+
 if not os.path.exists('calibration_data'):
     os.mkdir('calibration_data')
-filename = os.path.join('calibration_data', f"{info['participant']}_{info['session_nr']}_{info['date']}")
+
+filename = os.path.join(
+    'calibration_data',
+    f"{info['participant']}_{info['session_nr']}_{info['date']}"
+)
 datafile = open(filename + '.csv', 'w')
 datafile.write(','.join(log_vars) + '\n')
 datafile.flush()
@@ -212,16 +188,6 @@ instructions_txt = visual.TextStim(
     color='white',
     font='Monospace'
 )
-instructions_top_txt = visual.TextStim(
-    win=win,
-    text="Instructions",
-    height=1,
-    pos=[0, 7.5],
-    wrapWidth=30,
-    color='white',
-    font='Monospace'
-)
-
 dot_parameters = {
     'n_dot_sets': 3,
     'random_dot_behaviour': 'random_position',
@@ -259,78 +225,82 @@ fixation = visual.ShapeStim(
 # INSTRUCTIONS
 ###################################
 instructions_txt.text = (
-    "You have completed the training session! Now, it will become more difficult to estimate the net direction "
-    "of dot motion. It is meant to be difficult, so please do not worry if you find it hard.\n\n"
-    f"There will be {info['n_blocks']*info['n_trials_per_block']} trials in total.\n\n\n\n"
-    "Press SPACE to continue."
+    "You have completed the training session!\n\n"
+    "The task will now continue without feedback and without confidence ratings. "
+    "It will become more difficult to estimate the direction of dot motion. "
+    "Try to be as accurate as possible.\n\n"
+    f"There will be {gv['n_blocks'] * gv['n_trials_per_block']} trials in total.\n\n"
+    "Press SPACE to start."
 )
 instructions_txt.draw()
 win.flip()
 hf.exit_q(win)
-event.waitKeys(keyList=['space'])  # show instructions until space is pressed
+event.waitKeys(keyList=['space'])  # Show instructions until space is pressed
 event.clearEvents()
 
 ###################################
 # TASK WITH 2-DOWN-1-UP
 ###################################
-EEG_config.send_trigger(EEG_config.triggers['experiment_start'])
+EEG_config.send_trigger(triggers['experiment_start'])
 start_time = datetime.now()
 info['start_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
 
 correct_responses = 0
 correct_count = 0  # for 2-down-1-up
-is_coherence_block = False  # Will flip to True at first block
-
+is_coherence_block = False  # Flip True/False each block
 trial_overall_count = 0
 
-for block_i in range(info['n_blocks']):
+# Initialize low/high from the initial "medium" guess
+gv['low_coherence'] = gv['medium_coherence'] * 0.5
+gv['high_coherence'] = gv['medium_coherence'] * 2.0
+gv['low_distance'] = gv['medium_distance'] * 0.5
+gv['high_distance'] = gv['medium_distance'] * 2.0
+
+for block_i in range(gv['n_blocks']):
     # Alternate between calibrating coherence and distance
     is_coherence_block = not is_coherence_block
     block_type = 'coherence' if is_coherence_block else 'distance'
-    print(f"\n=== Starting Block {block_i+1}/{info['n_blocks']} ({block_type} calibration) ===")
+    print(f"\n=== Starting Block {block_i + 1}/{gv['n_blocks']} ({block_type} calibration) ===")
 
-    for trial_in_block in range(info['n_trials_per_block']):
+    for trial_in_block in range(gv['n_trials_per_block']):
         trial_overall_count += 1
-        EEG_config.send_trigger(EEG_config.triggers['trial_start'])
+        EEG_config.send_trigger(triggers['trial_start'])
 
-        # =========================
-        # Choose coherence, distance
-        # =========================
+        # -------------------------
+        # 1) Choose coherence/distance
+        # -------------------------
         if is_coherence_block:
-            # For coherence blocks, use the "medium" values
-            coherence_val = info['medium_coherence']
-            distance_val = info['medium_distance']
-            # Label them as "medium"
+            # For coherence blocks: use "medium" coherence, "medium" distance
+            coherence_val = gv['medium_coherence']
+            distance_val = gv['medium_distance']
             coherence_level = "medium"
             distance_level = "medium"
         else:
-            # For distance blocks, pick low or high distance
+            # For distance blocks: pick low or high distance
             if np.random.choice([True, False]):
-                distance_val = info['high_distance']
+                distance_val = gv['high_distance']
                 distance_level = "high"
             else:
-                distance_val = info['low_distance']
+                distance_val = gv['low_distance']
                 distance_level = "low"
 
             # Then pick coherence accordingly
-            # If distance == low_distance => coherence = high_coherence
-            # If distance == high_distance => coherence = low_coherence
-            if distance_val == info['low_distance']:
-                coherence_val = info['high_coherence']
+            if distance_val == gv['low_distance']:
+                # Distance is low => coherence is high
+                coherence_val = gv['high_coherence']
                 coherence_level = "high"
             else:
-                coherence_val = info['low_coherence']
+                # Distance is high => coherence is low
+                coherence_val = gv['low_coherence']
                 coherence_level = "low"
 
-        # =========================
-        # Random motion direction & signal delay
-        # =========================
+        # -------------------------
+        # 2) Random direction & signal delay
+        # -------------------------
         direction = round(np.random.uniform(1, 360), 0)
         signal_delay = np.random.uniform(0.3, 0.8)
 
-        # =========================
-        # Reference direction (CW or CCW)
-        # =========================
+        # Decide reference (CW or CCW offset by distance)
         if np.random.choice([True, False]):
             reference_direction = 'CW'
             reference_angle = (direction + distance_val) % 360
@@ -339,31 +309,30 @@ for block_i in range(info['n_blocks']):
             reference_angle = (direction - distance_val) % 360
 
         print(
-            f"Trial {trial_overall_count}: block={block_i+1}, block_type={block_type}, "
+            f"Trial {trial_overall_count}: block={block_i + 1}, block_type={block_type}, "
             f"direction={direction}, coherence={coherence_val:.3f}({coherence_level}), "
             f"distance={distance_val:.3f}({distance_level}), reference={reference_angle:.3f}"
         )
 
-        # =========================
-        # 1) Fixation
-        # =========================
+        # -------------------------
+        # 3) Fixation
+        # -------------------------
         stimuli = [aperture_outline, fixation]
         delay_time = np.random.uniform(gv['inter_trial_interval'][0], gv['inter_trial_interval'][1])
-        hf.draw_all_stimuli(win, stimuli, delay_time)
+        hf.draw_all_stimuli(win, stimuli, wait=delay_time)
         hf.exit_q(win)
 
-        # =========================
-        # 2) Show dots
-        # =========================
-        EEG_config.send_trigger(EEG_config.triggers['dots_onset'])
+        # -------------------------
+        # 4) Show dots
+        # -------------------------
+        EEG_config.send_trigger(triggers['dots_onset'])
         create_dot_motion_stimulus_n_sets(
             win, frame_rate, direction, coherence_val, signal_delay, dot_parameters, EEG_config
         )
 
-        # =========================
-        # 3) Show reference direction
-        # =========================
-        # Arc colors: We'll do the same logic you used before
+        # -------------------------
+        # 5) Show reference arcs
+        # -------------------------
         if 0 <= reference_angle < 180:
             arc_CW_color = 'orange'
             arc_CCW_color = 'blue'
@@ -392,18 +361,17 @@ for block_i in range(info['n_blocks']):
             lineColor='white', lineWidth=6
         )
         stimuli = [aperture_outline, arc_CW, arc_CCW, ref_line, fixation]
-        EEG_config.send_trigger(EEG_config.triggers['reference_onset'])
-        hf.draw_all_stimuli(win, stimuli)
+        EEG_config.send_trigger(triggers['reference_onset'])
+        hf.draw_all_stimuli(win, stimuli, wait=0.01)
         hf.exit_q(win)
 
-        # =========================
-        # 4) Response
-        # =========================
+        # -------------------------
+        # 6) Response
+        # -------------------------
         response_key, response_time = hf.check_key_press(win, gv['response_keys'])
-        EEG_config.send_trigger(EEG_config.triggers['response_made'])
+        EEG_config.send_trigger(triggers['response_made'])
 
-        # Map participant's key press to 'CW' or 'CCW' depending on which arc is chosen
-        # Same approach: if reference_angle < 180 => top half => left key = CCW, right key = CW, etc.
+        # Map participant's key press to 'CW' or 'CCW'
         if 0 <= reference_angle < 180:
             if response_key == gv['response_keys'][0]:
                 chosen_direction = 'CCW'
@@ -424,111 +392,108 @@ for block_i in range(info['n_blocks']):
         if is_correct:
             correct_responses += 1
             correct_count += 1
-            # 2-down-1-up: Decrease "medium" variable after two consecutive correct trials
             if correct_count == 2:
                 correct_count = 0
                 if is_coherence_block:
-                    # Decrease medium_coherence
-                    info['medium_coherence'] = max(info['medium_coherence'] - info['coherence_step'], 0.01)
+                    gv['medium_coherence'] = max(gv['medium_coherence'] - gv['coherence_step'], 0.01)
                 else:
-                    info['medium_distance'] = max(info['medium_distance'] - info['distance_step'], 1)
+                    gv['medium_distance'] = max(gv['medium_distance'] - gv['distance_step'], 1)
         else:
-            # Incorrect => reset correct_count, increase medium variable
             correct_count = 0
             if is_coherence_block:
-                info['medium_coherence'] = min(info['medium_coherence'] + info['coherence_step'], 1)
+                gv['medium_coherence'] = min(gv['medium_coherence'] + gv['coherence_step'], 1)
             else:
-                info['medium_distance'] = min(info['medium_distance'] + info['distance_step'], 50)
+                gv['medium_distance'] = min(gv['medium_distance'] + gv['distance_step'], 50)
 
         # Update low/high after each trial
-        info['low_coherence']  = info['medium_coherence'] * 0.5
-        info['high_coherence'] = info['medium_coherence'] * 2.0
-        info['low_distance']   = info['medium_distance'] * 0.5
-        info['high_distance']  = info['medium_distance'] * 2.0
+        gv['low_coherence'] = gv['medium_coherence'] * 0.5
+        gv['high_coherence'] = gv['medium_coherence'] * 2.0
+        gv['low_distance'] = gv['medium_distance'] * 0.5
+        gv['high_distance'] = gv['medium_distance'] * 2.0
 
-        # Determine correct color (for logging)
+        # Determine correct color for logging
         if reference_direction == 'CW':
             correct_color = arc_CW_color
         else:
             correct_color = arc_CCW_color
 
-        # =========================
-        # 5) Optional feedback
-        # =========================
-        # If you truly don't want participants to get any feedback color, skip this step
-        # Otherwise, e.g., show a color for half a second
+        # (Optional) brief feedback
         stimuli = [aperture_outline, fixation]
-        hf.draw_all_stimuli(win, stimuli, 0.5)
+        hf.draw_all_stimuli(win, stimuli, wait=0.5)
         hf.exit_q(win)
 
-        # =========================
-        # 6) Confidence rating?
-        # (Currently disabled, as you mention "does not include confidence ratings")
-        # =========================
+        # -------------------------
+        # 7) Confidence rating (disabled in calibration)
+        # -------------------------
         confidence_rating = None
         confidence_response_time = None
 
-        # 7) Clear & wait
+        # -------------------------
+        # 8) Clear & wait
+        # -------------------------
         fixation.color = 'white'
         win.flip()
         hf.exit_q(win)
         core.wait(1)
 
-        # =========================
-        # 8) SAVE DATA for this trial
-        # =========================
+        # -------------------------
+        # 9) SAVE DATA for this trial
+        # -------------------------
         info['trial_count'] = trial_overall_count
 
-        info['coherence']         = coherence_val
-        info['coherence_level']   = coherence_level
-        info['distance']          = distance_val
-        info['distance_level']    = distance_level
-        info['direction']         = direction
-        info['reference']         = reference_angle
-        info['signal_delay']      = signal_delay
+        info['coherence'] = coherence_val
+        info['coherence_level'] = coherence_level
+        info['distance'] = distance_val
+        info['distance_level'] = distance_level
 
-        info['correct_response']  = reference_direction   # 'CW'/'CCW'
-        info['participant_response'] = chosen_direction   # 'CW'/'CCW'
-        info['correct']           = is_correct
-        info['correct_response_colour']   = correct_color
+        info['direction'] = direction
+        info['reference'] = reference_angle
+        info['signal_delay'] = signal_delay
+
+        info['correct_response'] = reference_direction
+        info['participant_response'] = chosen_direction
+        info['correct'] = is_correct
+        info['correct_response_colour'] = correct_color
         info['participant_response_colour'] = participant_color
 
-        info['response_time']     = response_time
+        info['response_time'] = response_time
         info['confidence_rating'] = confidence_rating
         info['confidence_response_time'] = confidence_response_time
-
-        # Track current block type if you like
-        info['block_type'] = block_type
 
         datafile.write(','.join(str(info[var]) for var in log_vars) + '\n')
         datafile.flush()
 
 # End of all blocks/trials
-EEG_config.send_trigger(EEG_config.triggers['experiment_end'])
+EEG_config.send_trigger(triggers['experiment_end'])
 end_time = datetime.now()
 info['end_time'] = end_time.strftime("%Y-%m-%d %H:%M:%S")
 duration = end_time - start_time
 info['duration'] = str(duration)
 
+# Store the final calibration values in `info` for the last CSV row
+info['final_low_coherence'] = gv['low_coherence']
+info['final_high_coherence'] = gv['high_coherence']
+info['final_low_distance'] = gv['low_distance']
+info['final_high_distance'] = gv['high_distance']
+
+# Overwrite the final row with updated info (including final calibration)
+if info['trial_count'] > 0:
+    datafile.close()
+    with open(filename + '.csv', 'r+') as datafile:
+        lines = datafile.readlines()
+        # Replace last line with the updated final info
+        lines[-1] = ','.join(str(info[var]) for var in log_vars) + '\n'
+        datafile.seek(0)
+        datafile.writelines(lines)
+        datafile.flush()
+
 instructions_txt.text = (
-    "Well done! You have completed the task.\n\n"
+    "Well done! \n\nYou have completed the task.\n\n"
 )
 instructions_txt.draw()
 win.flip()
 hf.exit_q(win)
 keys = event.waitKeys(keyList=['space'], maxWait=10)
 event.clearEvents()
-
-# Overwrite the final row with experiment-level info
-if info['trial_count'] > 0:
-    datafile.close()
-    with open(filename + '.csv', 'r+') as datafile:
-        lines = datafile.readlines()
-        # Replace last line with updated final info
-        lines[-1] = ','.join(str(info[var]) for var in log_vars) + '\n'
-        datafile.seek(0)
-        datafile.writelines(lines)
-        datafile.flush()
-
 win.close()
 core.quit()
