@@ -248,7 +248,7 @@ event.clearEvents()
 instructions_txt.text = (
     "Every now and then, you'll be asked how confident you are in your decision. "
     "You'll see a scale ranging from 50% to 100%. A rating of 50% means you were completely guessing on your most recent trial, "
-    "while 100% means you were absolutely certain about the responseq. "
+    "while 100% means you were absolutely certain about the response. "
     "Use the same blue and orange response keys to adjust the slider position to match your confidence level, "
     "then press SPACE to confirm your rating.\n\n"
     "Press SPACE to learn about the practice session."
