@@ -138,7 +138,8 @@ info = dict(
     confidence_start_position=None,  # 50-100
     confidence_rating=None,  # 50–100
     confidence_response_time=None,
-    confidence_adjustments=None,  # list of tuples (position, time)
+    confidence_adjustments_steps=None,
+    confidence_adjustments_times=None,
 
     bonus_payment=None
 )
@@ -230,7 +231,7 @@ dot_parameters = {
     'n_dot_sets': 3,
     'random_dot_behaviour': 'random_position',
     'duration': gv['dot_display_time'],
-    'aperture_diameter': 10,
+    'aperture_diameter': 11,
     'fixation_diameter': 0.45,
     'dot_diameter': 0.16,
     'dot_density': 1,
@@ -303,7 +304,7 @@ instructions_txt.text = (
     "After the dots disappear, you'll see a reference line that divides the circle into two zones - one blue and one orange. "
     "Your task is to indicate whether the dots were moving toward the blue or orange zone. "
     "To respond, you'll use two keys on the keyboard: press the BLUE key with your left hand to choose blue, or press the ORANGE key with your "
-    "right hand to choose orange. Circles on th left and right side of the screen will remind you of the key-colour mapping.\n\n"
+    "right hand to choose orange. Circles on the left and right side of the screen will remind you of the key-colour mapping. "
     "After you make your choice, the central cross will change colour to show your selection.\n\n"
     "Press SPACE to continue."
 )
@@ -499,7 +500,12 @@ for trial in range(gv['n_trials']):
     info['confidence_start_position'] = confidence_start_position
     info['confidence_rating'] = confidence_rating
     info['confidence_response_time'] = confidence_response_time
-    info['confidence_adjustments'] = confidence_adjustments
+    if confidence_adjustments is not None:
+        info['confidence_adjustments_steps'] = confidence_adjustments['step_list']
+        info['confidence_adjustments_times'] = confidence_adjustments['time_list']
+    else:
+        info['confidence_adjustments_steps'] = None
+        info['confidence_adjustments_times'] = None
 
     datafile.write(','.join(str(info[var]) for var in log_vars) + '\n')
     datafile.flush()

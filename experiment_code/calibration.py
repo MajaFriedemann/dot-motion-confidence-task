@@ -104,7 +104,8 @@ info = dict(
     confidence_start_position=None,  # 50-100
     confidence_rating=None,  # 50–100 (not used in calibration)
     confidence_response_time=None,
-    confidence_adjustments=None,  # list of tuples (position, time)
+    confidence_adjustments_steps=None,
+    confidence_adjustments_times=None,
 
     # We'll store the final calibration in these fields for the last row
     final_low_coherence=None,
@@ -196,7 +197,7 @@ dot_parameters = {
     'n_dot_sets': 3,
     'random_dot_behaviour': 'random_position',
     'duration': gv['dot_display_time'],
-    'aperture_diameter': 10,
+    'aperture_diameter': 11,
     'fixation_diameter': 0.45,
     'dot_diameter': 0.16,
     'dot_density': 1,
@@ -482,7 +483,12 @@ for block_i in range(gv['n_blocks']):
         info['confidence_start_position'] = confidence_start_position
         info['confidence_rating'] = confidence_rating
         info['confidence_response_time'] = confidence_response_time
-        info['confidence_adjustments'] = confidence_adjustments
+        if confidence_adjustments is not None:
+            info['confidence_adjustments_steps'] = confidence_adjustments['step_list']
+            info['confidence_adjustments_times'] = confidence_adjustments['time_list']
+        else:
+            info['confidence_adjustments_steps'] = None
+            info['confidence_adjustments_times'] = None
 
         datafile.write(','.join(str(info[var]) for var in log_vars) + '\n')
         datafile.flush()

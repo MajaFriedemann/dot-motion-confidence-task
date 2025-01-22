@@ -151,8 +151,8 @@ def get_confidence_rating(win, gv, EEG_config=None):
 
     kb = keyboard.Keyboard()  # Use modern Keyboard class
 
-    # Slider labels (positions 0–9 → 50%, 60%, ..., 100%)
-    slider_labels = [f"{50 + i * 5}%" for i in range(10)]
+    # Slider labels (positions 0–9 → 50%, 55%, ..., 100%)
+    slider_labels = [50 + i * 5 for i in range(10)]  # Actual confidence values
 
     # Create the Slider
     slider = visual.Slider(
@@ -194,6 +194,9 @@ def get_confidence_rating(win, gv, EEG_config=None):
     initial_pos = random.choice(slider.ticks)
     slider.markerPos = initial_pos
 
+    # Convert the initial position to a confidence percentage
+    confidence_start = slider_labels[initial_pos]
+
     # Question prompt
     slider_question_text = visual.TextStim(
         win=win,
@@ -210,19 +213,20 @@ def get_confidence_rating(win, gv, EEG_config=None):
     # TextStim to display numeric/percentage feedback
     slider_rating_txt = visual.TextStim(
         win=win,
-        text=slider_labels[initial_pos],
-        height=0.75,
-        pos=(0, -1.8),
+        text=f"{confidence_start}%",  # Display confidence value
+        height=0.8,
+        pos=(0, 2),
         color='white',
         font='Arial',
     )
 
     # Record the start time and adjustments
     start_time = time.time()
-    adjustments = [(initial_pos, 0)]  # Record the initial position and time
+    adjustments = [(confidence_start, 0)]  # Record the initial confidence value and time
     if EEG_config is not None:
         EEG_config.send_trigger(EEG_config.triggers['confidence_rating_onset'])
 
+    kb.clearEvents()
     break_loop = False
     while not break_loop:
         # Poll keyboard for relevant keys
@@ -233,25 +237,26 @@ def get_confidence_rating(win, gv, EEG_config=None):
                 if slider.markerPos > 0:
                     slider.markerPos -= 1
                     adjustment_time = time.time() - start_time
-                    adjustments.append((slider.markerPos, adjustment_time))
+                    adjustments.append((slider_labels[int(slider.markerPos)], adjustment_time))
                     if EEG_config is not None:
                         EEG_config.send_trigger(EEG_config.triggers['confidence_decrease'])
             elif key.name == gv['response_keys'][1]:  # e.g., 'right'
                 if slider.markerPos < 9:  # Adjusted for 10 steps
                     slider.markerPos += 1
                     adjustment_time = time.time() - start_time
-                    adjustments.append((slider.markerPos, adjustment_time))
+                    adjustments.append((slider_labels[int(slider.markerPos)], adjustment_time))
                     if EEG_config is not None:
                         EEG_config.send_trigger(EEG_config.triggers['confidence_increase'])
             elif key.name == 'space':
                 if EEG_config is not None:
                     EEG_config.send_trigger(EEG_config.triggers['confidence_response_made'])
                 # Change marker color upon confirmation
-                slider.markerColor = 'black'
+                slider.markerColor = 'darkgreen'
+                slider_rating_txt.color = 'darkgreen'
                 break_loop = True
 
         # Update the rating text to match current marker position
-        slider_rating_txt.text = slider_labels[int(slider.markerPos)]
+        slider_rating_txt.text = f"{slider_labels[int(slider.markerPos)]}%"
 
         # Draw all stimuli
         slider.draw()
@@ -262,20 +267,22 @@ def get_confidence_rating(win, gv, EEG_config=None):
         win.flip()  # sync to screen refresh
 
     # Record end time
-    end_time = time.time()
-    response_time = end_time - start_time
+    response_time = time.time() - start_time
 
-    # Convert marker position to confidence rating (50 + markerPos * 5)
-    rating = 50 + slider.markerPos * 5
+    # Final rating value
+    final_rating = slider_labels[int(slider.markerPos)]
 
-    # Show the changed marker color briefly before returning
-    slider.draw()
-    slider_rating_txt.draw()
-    slider_question_text.draw()
-    win.flip()
-    core.wait(0.5)
+    # Serialize adjustments for saving
+    steps = [str(adj[0]) for adj in adjustments]  # Extract confidence values
+    times = [str(adj[1]) for adj in adjustments]  # Extract times
+    adjustments_serialized = {
+        "step_list": '|'.join(steps),  # Serialize steps with | separator
+        "time_list": '|'.join(times)  # Serialize times with | separator
+    }
+    core.wait(0.7)
+    return final_rating, response_time, confidence_start, adjustments_serialized
 
-    return rating, response_time, initial_pos, adjustments
+
 
 
 
