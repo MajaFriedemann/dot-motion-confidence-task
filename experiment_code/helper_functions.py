@@ -13,6 +13,7 @@ from psychopy import gui, visual, core, data, event
 from psychopy.hardware import keyboard
 import pandas as pd
 import numpy as np
+import serial
 
 
 ###################################
@@ -144,32 +145,50 @@ def draw_arc(win, radius, start_deg, end_deg, color, pos=(0, 0)):
 def get_confidence_rating(win, gv, EEG_config=None):
     """
     Displays a confidence rating Slider, controlled by left/right keys from `gv['response_keys']`
-    and 'space' to confirm. Returns rating (50–100) and response time.
-    The slider marker color changes upon space press.
+    and 'space' to confirm. Returns rating (50–100), response time, initial position,
+    and a list of adjustments made.
     """
 
     kb = keyboard.Keyboard()  # Use modern Keyboard class
 
-    # Slider labels (positions 0–5 → 50%, 60%, 70%, 80%, 90%, 100%)
-    slider_labels = ["50%", "60%", "70%", "80%", "90%", "100%"]
+    # Slider labels (positions 0–9 → 50%, 60%, ..., 100%)
+    slider_labels = [f"{50 + i * 5}%" for i in range(10)]
 
     # Create the Slider
-    # - style includes 'triangleMarker' to give a more noticeable triangular marker
-    # - remove markerSize, as older PsychoPy doesn't support it
     slider = visual.Slider(
         win=win,
-        ticks=[0, 1, 2, 3, 4, 5],
-        labels=["50%", "", "", "", "", "100%"],  # optional
-        pos=(0, 0),
-        size=(15, 2),
+        ticks=list(range(10)),  # 10 steps from 0 to 9
+        labels=None,  # Disable built-in labels
+        pos=(0, 0),  # Position of the slider
+        size=(15, 2),  # Width and height of the slider
         units="deg",
         flip=True,
         style=['slider'],
         granularity=1,
-        labelHeight=0.7,
-        markerColor='green'
+        markerColor='green',
+        font='Arial',
     )
-    slider.marker.setSize((0.6, 2))
+
+    slider.marker.setSize((0.6, 2))  # Adjust marker size
+
+    # Create Separate Labels
+    label_50 = visual.TextStim(
+        win=win,
+        text="50%",  # Left label
+        height=0.8,  # Font size
+        pos=(-9, 0),  # Position: left of the slider
+        color='white',
+        font='Arial',
+    )
+
+    label_100 = visual.TextStim(
+        win=win,
+        text="100%",  # Right label
+        height=0.8,  # Font size
+        pos=(9, 0),  # Position: right of the slider
+        color='white',
+        font='Arial',
+    )
 
     # Random initial position
     initial_pos = random.choice(slider.ticks)
@@ -192,13 +211,15 @@ def get_confidence_rating(win, gv, EEG_config=None):
     slider_rating_txt = visual.TextStim(
         win=win,
         text=slider_labels[initial_pos],
-        height=0.7,
-        pos=(0, -1.65),
-        color='white'
+        height=0.75,
+        pos=(0, -1.8),
+        color='white',
+        font='Arial',
     )
 
-    # Record the start time
+    # Record the start time and adjustments
     start_time = time.time()
+    adjustments = [(initial_pos, 0)]  # Record the initial position and time
     if EEG_config is not None:
         EEG_config.send_trigger(EEG_config.triggers['confidence_rating_onset'])
 
@@ -208,10 +229,20 @@ def get_confidence_rating(win, gv, EEG_config=None):
         keys = kb.getKeys(keyList=gv['response_keys'] + ['space'], waitRelease=False)
 
         for key in keys:
-            if key.name == gv['response_keys'][0]:  # e.g. 'left'
-                slider.markerPos = max(slider.markerPos - 1, 0)
-            elif key.name == gv['response_keys'][1]:  # e.g. 'right'
-                slider.markerPos = min(slider.markerPos + 1, 5)
+            if key.name == gv['response_keys'][0]:  # e.g., 'left'
+                if slider.markerPos > 0:
+                    slider.markerPos -= 1
+                    adjustment_time = time.time() - start_time
+                    adjustments.append((slider.markerPos, adjustment_time))
+                    if EEG_config is not None:
+                        EEG_config.send_trigger(EEG_config.triggers['confidence_decrease'])
+            elif key.name == gv['response_keys'][1]:  # e.g., 'right'
+                if slider.markerPos < 9:  # Adjusted for 10 steps
+                    slider.markerPos += 1
+                    adjustment_time = time.time() - start_time
+                    adjustments.append((slider.markerPos, adjustment_time))
+                    if EEG_config is not None:
+                        EEG_config.send_trigger(EEG_config.triggers['confidence_increase'])
             elif key.name == 'space':
                 if EEG_config is not None:
                     EEG_config.send_trigger(EEG_config.triggers['confidence_response_made'])
@@ -224,6 +255,8 @@ def get_confidence_rating(win, gv, EEG_config=None):
 
         # Draw all stimuli
         slider.draw()
+        label_50.draw()
+        label_100.draw()
         slider_rating_txt.draw()
         slider_question_text.draw()
         win.flip()  # sync to screen refresh
@@ -232,8 +265,8 @@ def get_confidence_rating(win, gv, EEG_config=None):
     end_time = time.time()
     response_time = end_time - start_time
 
-    # Convert marker position to confidence rating (50 + markerPos * 10)
-    rating = 50 + slider.markerPos * 10
+    # Convert marker position to confidence rating (50 + markerPos * 5)
+    rating = 50 + slider.markerPos * 5
 
     # Show the changed marker color briefly before returning
     slider.draw()
@@ -242,5 +275,8 @@ def get_confidence_rating(win, gv, EEG_config=None):
     win.flip()
     core.wait(0.5)
 
-    return rating, response_time
+    return rating, response_time, initial_pos, adjustments
+
+
+
 

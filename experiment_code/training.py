@@ -90,8 +90,10 @@ info = dict(
     participant_response_colour=None,
 
     response_time=None,           # time to respond
+    confidence_start_position=None,  # 50-100
     confidence_rating=None,       # 50–100
     confidence_response_time=None,
+    confidence_adjustments=None,  # list of tuples (position, time)
 )
 
 # Create a CSV file with these columns in order
@@ -111,7 +113,7 @@ win = visual.Window(
     size=(1920, 1080),
     units="deg",
     screen=1,
-    fullscr=False,
+    fullscr=True,
     color=(0.001, 0.001, 0.001),
     colorSpace='rgb',
     monitor=mon
@@ -136,8 +138,10 @@ triggers = dict(
     reference_onset=5,
     response_made=6,
     confidence_rating_onset=7,
-    confidence_response_made=8,
-    experiment_end=9
+    confidence_increase=8,
+    confidence_decrease=9,
+    confidence_response_made=10,
+    experiment_end=11
 )
 send_triggers = expInfo['eeg (y/n)'].lower() == 'y'
 EEG_config = hf.EEGConfig(triggers, send_triggers)
@@ -155,7 +159,7 @@ big_txt = visual.TextStim(
     pos=[0, 3],
     color='white',
     wrapWidth=20,
-    font='Monospace'
+    font='Arial'
 )
 instructions_txt = visual.TextStim(
     win=win,
@@ -164,7 +168,7 @@ instructions_txt = visual.TextStim(
     pos=[0, 2],
     wrapWidth=30,
     color='white',
-    font='Monospace'
+    font='Arial'
 )
 instructions_top_txt = visual.TextStim(
     win=win,
@@ -173,15 +177,14 @@ instructions_top_txt = visual.TextStim(
     pos=[0, 7.5],
     wrapWidth=30,
     color='white',
-    font='Monospace'
+    font='Arial'
 )
-
 dot_parameters = {
     'n_dot_sets': 3,
     'random_dot_behaviour': 'random_position',
     'duration': gv['dot_display_time'],
-    'aperture_diameter': 8,
-    'fixation_diameter': 0.4,
+    'aperture_diameter': 10,
+    'fixation_diameter': 0.45,
     'dot_diameter': 0.16,
     'dot_density': 1,
     'speed': 2
@@ -207,6 +210,22 @@ fixation = visual.ShapeStim(
     lineWidth=4,
     closeShape=False,
     lineColor='white'
+)
+blue_circle = visual.Circle(
+    win,
+    radius=0.3,
+    pos=(-9, 0),  # Left side of the screen
+    fillColor='blue',
+    lineColor=None,
+    units='deg'
+)
+orange_circle = visual.Circle(
+    win,
+    radius=0.3,
+    pos=(9, 0),  # Right side of the screen
+    fillColor='orange',
+    lineColor=None,
+    units='deg'
 )
 
 ###################################
@@ -236,7 +255,8 @@ instructions_txt.text = (
     "After the dots disappear, you'll see a reference line that divides the circle into two zones - one blue and one orange. "
     "Your task is to indicate whether the dots were moving toward the blue or orange zone. "
     "To respond, you'll use two keys on the keyboard: press the BLUE key with your left hand to choose blue, or press the ORANGE key with your "
-    "right hand to choose orange. After you make your choice, the central cross will change colour to show your selection.\n\n"
+    "right hand to choose orange. Circles on th left and right side of the screen will remind you of the key-colour mapping.\n\n"
+    "After you make your choice, the central cross will change colour to show your selection.\n\n"
     "Press SPACE to learn about confidence ratings."
 )
 instructions_txt.draw()
@@ -249,8 +269,8 @@ instructions_txt.text = (
     "Every now and then, you'll be asked how confident you are in your decision. "
     "You'll see a scale ranging from 50% to 100%. A rating of 50% means you were completely guessing on your most recent trial, "
     "while 100% means you were absolutely certain about the response. "
-    "Use the same blue and orange response keys to adjust the slider position to match your confidence level, "
-    "then press SPACE to confirm your rating.\n\n"
+    "The slider marker will start at a random position on the scale, and you can adjust it using the same blue and orange response keys "
+    "to match your confidence level. Then press SPACE to confirm your rating.\n\n"
     "Press SPACE to learn about the practice session."
 )
 instructions_txt.draw()
@@ -285,7 +305,7 @@ for trial in range(gv['n_trials']):
     trial_num = trial + 1
 
     # 1) Choose signal_delay, direction, coherence, distance
-    signal_delay = np.random.uniform(0.3, 0.8)
+    signal_delay = np.random.uniform(0.4, 0.8)
     direction = round(np.random.uniform(1, 360), 0)
 
     # Determine coherence numeric & level
@@ -349,7 +369,7 @@ for trial in range(gv['n_trials']):
              (dot_parameters['aperture_diameter'] / 2 + 1) * np.sin(np.deg2rad(reference_angle))),
         lineColor='white', lineWidth=6
     )
-    stimuli = [aperture_outline, arc_CW, arc_CCW, ref_line, fixation]
+    stimuli = [aperture_outline, arc_CW, arc_CCW, ref_line, fixation, blue_circle, orange_circle]
     EEG_config.send_trigger(EEG_config.triggers['reference_onset'])
     hf.draw_all_stimuli(win, stimuli)
     hf.exit_q(win)
@@ -389,7 +409,7 @@ for trial in range(gv['n_trials']):
         correct_color = arc_CCW_color
 
     # 7) Feedback
-    stimuli = [aperture_outline, fixation]
+    stimuli = [aperture_outline, fixation, blue_circle, orange_circle]
     hf.draw_all_stimuli(win, stimuli, 0.5)
     hf.exit_q(win)
 
@@ -398,15 +418,18 @@ for trial in range(gv['n_trials']):
         fixation.color = 'lime'
     else:
         fixation.color = 'red'
-    stimuli = [aperture_outline, fixation]
+    stimuli = [aperture_outline, fixation, blue_circle, orange_circle]
     hf.draw_all_stimuli(win, stimuli, 1)
     hf.exit_q(win)
 
     # 8) Confidence rating (random 1/3 of trials)
+    confidence_start_position = None
     confidence_rating = None
     confidence_response_time = None
+    confidence_adjustments = None
     if np.random.choice([True, False, False]):
-        confidence_rating, confidence_response_time = hf.get_confidence_rating(win, gv, EEG_config)
+        confidence_rating, confidence_response_time, confidence_start_position, confidence_adjustments = hf.get_confidence_rating(
+            win, gv, EEG_config)
 
     # 9) Clear & wait
     fixation.color = 'white'
@@ -434,8 +457,10 @@ for trial in range(gv['n_trials']):
     info['participant_response_colour'] = participant_color
 
     info['response_time'] = response_time
+    info['confidence_start_position'] = confidence_start_position
     info['confidence_rating'] = confidence_rating
     info['confidence_response_time'] = confidence_response_time
+    info['confidence_adjustments'] = confidence_adjustments
 
     datafile.write(','.join(str(info[var]) for var in log_vars) + '\n')
     datafile.flush()
