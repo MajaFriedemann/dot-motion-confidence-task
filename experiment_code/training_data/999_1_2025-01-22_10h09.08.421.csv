@@ -1,2 +1,0 @@
-expName,curec_ID,session_nr,date,start_time,end_time,duration,participant,age,gender,trial_count,coherence,coherence_level,distance,distance_level,direction,reference,signal_delay,correct_response,participant_response,correct,correct_response_colour,participant_response_colour,response_time,confidence_start_position,confidence_rating,confidence_response_time
-confidence-pgACC-TUS,R88533/RE002,1,2025-01-22_10h09.08.421,2025-01-22 10:09:11,None,None,999,,,1,0.5,low,50,high,91.0,41.0,0.7180448332087292,CCW,CW,False,blue,orange,10.022338600014336,None,None,None

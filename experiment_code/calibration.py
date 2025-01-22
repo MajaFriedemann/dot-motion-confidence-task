@@ -246,12 +246,12 @@ orange_circle = visual.Circle(
 # INSTRUCTIONS
 ###################################
 instructions_txt.text = (
-    "You have completed the training session!\n\n"
+    "Well done for completing the training session!\n\n"
     "The task will now continue without feedback and without confidence ratings. "
-    "It will become more difficult to estimate the direction of dot motion. "
-    "Try to be as accurate as possible.\n\n"
-    f"There will be {gv['n_blocks'] * gv['n_trials_per_block']} trials in total.\n\n"
-    "Press SPACE to start."
+    "You may notice that estimating the direction of dot motion becomes more challenging. "
+    "Don't worry if it feels tricky. Simply focus and do your best to respond as accurately as possible.\n\n"
+    f"The upcoming session will consist of {gv['n_blocks'] * gv['n_trials_per_block']} trials in total.\n\n"
+    "When you're ready to begin, press SPACE to start."
 )
 instructions_txt.draw()
 win.flip()

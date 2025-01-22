@@ -152,12 +152,12 @@ def get_confidence_rating(win, gv, EEG_config=None):
     kb = keyboard.Keyboard()  # Use modern Keyboard class
 
     # Slider labels (positions 0–9 → 50%, 55%, ..., 100%)
-    slider_labels = [50 + i * 5 for i in range(10)]  # Actual confidence values
+    slider_labels = [50 + i * 5 for i in range(11)]  # Actual confidence values
 
     # Create the Slider
     slider = visual.Slider(
         win=win,
-        ticks=list(range(10)),  # 10 steps from 0 to 9
+        ticks=list(range(11)),  # 11 steps from 0 to 10
         labels=None,  # Disable built-in labels
         pos=(0, 0),  # Position of the slider
         size=(15, 2),  # Width and height of the slider
@@ -241,7 +241,7 @@ def get_confidence_rating(win, gv, EEG_config=None):
                     if EEG_config is not None:
                         EEG_config.send_trigger(EEG_config.triggers['confidence_decrease'])
             elif key.name == gv['response_keys'][1]:  # e.g., 'right'
-                if slider.markerPos < 9:  # Adjusted for 10 steps
+                if slider.markerPos < 10:  # Adjusted for 11 steps
                     slider.markerPos += 1
                     adjustment_time = time.time() - start_time
                     adjustments.append((slider_labels[int(slider.markerPos)], adjustment_time))

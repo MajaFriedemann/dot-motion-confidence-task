@@ -318,9 +318,22 @@ instructions_txt.text = (
     "Every now and then, you'll be asked how confident you are in your decision. "
     "You'll see a scale ranging from 50% to 100%. A rating of 50% means you were completely guessing on your most recent trial, "
     "while 100% means you were absolutely certain about the response. "
-    "The slider marker will start at a random position on the scale, and you can adjust it using the same blue and orange response keys "
-    "to match your confidence level. Then press SPACE to confirm your rating.\n\n"
-    "Press SPACE to continue"
+    "The slider marker will start at a random position on the scale. You can adjust it using the same blue and orange response keys "
+    "to move left or right on the scale. Then press SPACE to confirm your rating.\n\n"
+    "Press SPACE to continue."
+)
+instructions_txt.draw()
+win.flip()
+event.waitKeys(keyList=['space'])
+event.clearEvents()
+
+# Bonus explanation
+instructions_txt.text = (
+    "In this task, your bonus payment will depend on two factors:\n\n"
+    "1. The accuracy of your choices when judging the direction of the dot motion.\n"
+    "2. The accuracy of your confidence judgments—how well your confidence ratings align with your actual performance.\n\n"
+    "Try to be as accurate as possible in your responses, and be honest about your confidence for each decision.\n\n"
+    "Press SPACE to continue."
 )
 instructions_txt.draw()
 win.flip()
@@ -338,6 +351,7 @@ instructions_txt.draw()
 win.flip()
 event.waitKeys(keyList=['space'])
 event.clearEvents()
+
 
 ###################################
 # TASK

@@ -270,8 +270,8 @@ instructions_txt.text = (
     "Every now and then, you'll be asked how confident you are in your decision. "
     "You'll see a scale ranging from 50% to 100%. A rating of 50% means you were completely guessing on your most recent trial, "
     "while 100% means you were absolutely certain about the response. "
-    "The slider marker will start at a random position on the scale, and you can adjust it using the same blue and orange response keys "
-    "to match your confidence level. Then press SPACE to confirm your rating.\n\n"
+    "The slider marker will start at a random position on the scale. You can adjust it using the same blue and orange response keys "
+    "to move left or right on the scale. Then press SPACE to confirm your rating.\n\n"
     "Press SPACE to learn about the practice session."
 )
 instructions_txt.draw()
