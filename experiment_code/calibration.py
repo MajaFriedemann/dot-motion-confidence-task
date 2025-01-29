@@ -1,11 +1,9 @@
 """
 calibration for random dot motion task with confidence ratings
 coherences and distances get calibrated in alternating blocks using 2-down-1-up
-whenever the distance gets calibrated, the coherence is set to the medium value
+whenever the distance gets calibrated, the coherence is set to the extreme values
 whenever the coherence gets calibrated, the distance is set to the medium value
-saves data in calibration_data folder
-
-Maja Friedemann 2025
+saves data in calibration_data folder, with scheduled breaks after one-third and two-thirds of trials
 """
 
 ###################################
@@ -43,7 +41,6 @@ if not dlg.OK:
 ###################################
 # TASK (STRUCTURE) VARIABLES
 ###################################
-# These do NOT get written to each trial row by default, but define how the task is structured and calibrated
 gv = dict(
     # Timing and general
     dot_display_time=1.0,  # duration of dot display (seconds)
@@ -51,8 +48,8 @@ gv = dict(
     response_keys=['d', 'k'],  # keys for blue/orange responses
 
     # Staircase / calibration settings
-    n_blocks=8,  # number of alternating calibration blocks 8
-    n_trials_per_block=30,  # total = n_blocks * n_trials_per_block 30
+    n_blocks=8,  # number of alternating calibration blocks
+    n_trials_per_block=30,  # total = n_blocks * n_trials_per_block
     medium_coherence=0.3,  # initial guess for "medium" coherence
     medium_distance=20,  # initial guess for "medium" distance
     coherence_step=0.01,  # staircase step size for coherence (2-down-1-up)
@@ -68,7 +65,6 @@ gv = dict(
 ###################################
 # DATA (TO-BE-SAVED) VARIABLES
 ###################################
-# These WILL be written into each row of the CSV
 info = dict(
     expName=expName,
     curec_ID=curecID,
@@ -169,21 +165,11 @@ triggers = dict(
 send_triggers = expInfo['eeg (y/n)'].lower() == 'y'
 EEG_config = hf.EEGConfig(triggers, send_triggers)
 
-# CLOCK
 clock = core.Clock()
 
 ###################################
 # CREATE STIMULI
 ###################################
-big_txt = visual.TextStim(
-    win=win,
-    text='Welcome!',
-    height=2,
-    pos=[0, 3],
-    color='white',
-    wrapWidth=20,
-    font='Arial'
-)
 instructions_txt = visual.TextStim(
     win=win,
     text="\n\n\n\n\n\n Press SPACE to start.",
@@ -197,8 +183,8 @@ dot_parameters = {
     'n_dot_sets': 3,
     'random_dot_behaviour': 'random_position',
     'duration': gv['dot_display_time'],
-    'aperture_diameter': 11,
-    'fixation_diameter': 0.45,
+    'aperture_diameter': 8.5,
+    'fixation_diameter': 0.4,
     'dot_diameter': 0.16,
     'dot_density': 1,
     'speed': 2
@@ -242,9 +228,21 @@ orange_circle = visual.Circle(
     units='deg'
 )
 
+# --- Define Break Screen Stimulus ---
+break_text_stim = visual.TextStim(
+    win=win,
+    text="",  # Placeholder; will be updated dynamically
+    height=1.2,
+    pos=(0, 0),
+    wrapWidth=30,
+    color='white',
+    font='Arial'
+)
+
 ###################################
 # INSTRUCTIONS
 ###################################
+# Initial Instructions Screen
 instructions_txt.text = (
     "Well done for completing the training session!\n\n"
     "The task will now continue without feedback and without confidence ratings. "
@@ -256,7 +254,7 @@ instructions_txt.text = (
 instructions_txt.draw()
 win.flip()
 hf.exit_q(win)
-event.waitKeys(keyList=['space'])  # Show instructions until space is pressed
+event.waitKeys(keyList=['space'])
 event.clearEvents()
 
 ###################################
@@ -268,7 +266,6 @@ info['start_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
 
 correct_responses = 0
 correct_count = 0  # for 2-down-1-up
-is_coherence_block = False  # Flip True/False each block
 trial_overall_count = 0
 
 # Initialize low/high from the initial "medium" guess
@@ -277,43 +274,59 @@ gv['high_coherence'] = gv['medium_coherence'] * 2.0
 gv['low_distance'] = gv['medium_distance'] * 0.5
 gv['high_distance'] = gv['medium_distance'] * 2.0
 
+# Define total trials and break points
+n_trials_total = gv['n_blocks'] * gv['n_trials_per_block']  # 8 * 30 = 240
+break_points = {
+    n_trials_total // 3,         # After 80 trials
+    (2 * n_trials_total) // 3    # After 160 trials
+}
+
+# We'll flip True/False each block
+# True => Coherence block (coherence=medium, distance=medium)
+# False => Distance block (distance=low or high, coherence=opposite)
+is_coherence_block = False
+
 for block_i in range(gv['n_blocks']):
-    # Alternate between calibrating coherence and distance
     is_coherence_block = not is_coherence_block
     block_type = 'coherence' if is_coherence_block else 'distance'
     print(f"\n=== Starting Block {block_i + 1}/{gv['n_blocks']} ({block_type} calibration) ===")
+
+    # If distance block, build a balanced list of 'low'/'high' for each trial
+    # so exactly half are low distance, half are high distance
+    distance_order = []
+    if not is_coherence_block:
+        half = gv['n_trials_per_block'] // 2
+        distance_order = (['low'] * half + ['high'] * half)
+        np.random.shuffle(distance_order)
 
     for trial_in_block in range(gv['n_trials_per_block']):
         trial_overall_count += 1
         EEG_config.send_trigger(triggers['trial_start'])
 
         # -------------------------
-        # 1) Choose coherence/distance
+        # 1) Choose coherence/distance for this block
         # -------------------------
         if is_coherence_block:
-            # For coherence blocks: use "medium" coherence, "medium" distance
+            # Calibrating coherence => always use (coherence=medium, distance=medium)
             coherence_val = gv['medium_coherence']
-            distance_val = gv['medium_distance']
             coherence_level = "medium"
+            distance_val = gv['medium_distance']
             distance_level = "medium"
         else:
-            # For distance blocks: pick low or high distance
-            if np.random.choice([True, False]):
-                distance_val = gv['high_distance']
-                distance_level = "high"
-            else:
+            # Calibrating distance => we use either 'low' or 'high'
+            current_distance_level = distance_order[trial_in_block]
+            if current_distance_level == 'low':
                 distance_val = gv['low_distance']
-                distance_level = "low"
-
-            # Then pick coherence accordingly
-            if distance_val == gv['low_distance']:
-                # Distance is low => coherence is high
+                distance_level = 'low'
+                # If distance is low => coherence is high
                 coherence_val = gv['high_coherence']
-                coherence_level = "high"
+                coherence_level = 'high'
             else:
-                # Distance is high => coherence is low
+                distance_val = gv['high_distance']
+                distance_level = 'high'
+                # If distance is high => coherence is low
                 coherence_val = gv['low_coherence']
-                coherence_level = "low"
+                coherence_level = 'low'
 
         # -------------------------
         # 2) Random direction & signal delay
@@ -332,7 +345,7 @@ for block_i in range(gv['n_blocks']):
         print(
             f"Trial {trial_overall_count}: block={block_i + 1}, block_type={block_type}, "
             f"direction={direction}, coherence={coherence_val:.3f}({coherence_level}), "
-            f"distance={distance_val:.3f}({distance_level}), reference={reference_angle:.3f}"
+            f"distance={distance_val:.3f}({distance_level}), reference={reference_angle:.1f}"
         )
 
         # -------------------------
@@ -369,11 +382,12 @@ for block_i in range(gv['n_blocks']):
             win, dot_parameters['aperture_diameter'] / 2,
             reference_angle, reference_angle + 90, arc_CCW_color
         )
+
         ref_line = visual.Line(
             win,
             start=(
-                (dot_parameters['aperture_diameter'] / 2 - 1) * np.cos(np.deg2rad(reference_angle)),
-                (dot_parameters['aperture_diameter'] / 2 - 1) * np.sin(np.deg2rad(reference_angle))
+                (dot_parameters['aperture_diameter'] / 2 - 2) * np.cos(np.deg2rad(reference_angle)),
+                (dot_parameters['aperture_diameter'] / 2 - 2) * np.sin(np.deg2rad(reference_angle))
             ),
             end=(
                 (dot_parameters['aperture_diameter'] / 2 + 1) * np.cos(np.deg2rad(reference_angle)),
@@ -383,7 +397,7 @@ for block_i in range(gv['n_blocks']):
         )
         stimuli = [aperture_outline, arc_CW, arc_CCW, ref_line, fixation, blue_circle, orange_circle]
         EEG_config.send_trigger(triggers['reference_onset'])
-        hf.draw_all_stimuli(win, stimuli, wait=0.01)
+        hf.draw_all_stimuli(win, stimuli, wait=0.01)  # Minimal wait to ensure rendering
         hf.exit_q(win)
 
         # -------------------------
@@ -413,6 +427,7 @@ for block_i in range(gv['n_blocks']):
         if is_correct:
             correct_responses += 1
             correct_count += 1
+            # 2-down => after 2 consecutive correct
             if correct_count == 2:
                 correct_count = 0
                 if is_coherence_block:
@@ -420,31 +435,32 @@ for block_i in range(gv['n_blocks']):
                 else:
                     gv['medium_distance'] = max(gv['medium_distance'] - gv['distance_step'], 1)
         else:
+            # 1-up => reset correct_count and step upward
             correct_count = 0
             if is_coherence_block:
                 gv['medium_coherence'] = min(gv['medium_coherence'] + gv['coherence_step'], 1)
             else:
                 gv['medium_distance'] = min(gv['medium_distance'] + gv['distance_step'], 50)
 
-        # Update low/high after each trial
+        # After each trial, recalculate low/high from updated medium
         gv['low_coherence'] = gv['medium_coherence'] * 0.5
         gv['high_coherence'] = gv['medium_coherence'] * 2.0
         gv['low_distance'] = gv['medium_distance'] * 0.5
         gv['high_distance'] = gv['medium_distance'] * 2.0
 
-        # Determine correct color for logging
+        # Determine correct_color for logging
         if reference_direction == 'CW':
             correct_color = arc_CW_color
         else:
             correct_color = arc_CCW_color
 
-        # (Optional) brief feedback
+        # (Optional) brief pause
         stimuli = [aperture_outline, fixation, blue_circle, orange_circle]
         hf.draw_all_stimuli(win, stimuli, wait=0.5)
         hf.exit_q(win)
 
         # -------------------------
-        # 7) Confidence rating (disabled in calibration)
+        # 7) Confidence rating (DISABLED in calibration)
         # -------------------------
         confidence_start_position = None
         confidence_rating = None
@@ -483,17 +499,36 @@ for block_i in range(gv['n_blocks']):
         info['confidence_start_position'] = confidence_start_position
         info['confidence_rating'] = confidence_rating
         info['confidence_response_time'] = confidence_response_time
-        if confidence_adjustments is not None:
-            info['confidence_adjustments_steps'] = confidence_adjustments['step_list']
-            info['confidence_adjustments_times'] = confidence_adjustments['time_list']
-        else:
-            info['confidence_adjustments_steps'] = None
-            info['confidence_adjustments_times'] = None
+        info['confidence_adjustments_steps'] = None
+        info['confidence_adjustments_times'] = None
 
         datafile.write(','.join(str(info[var]) for var in log_vars) + '\n')
         datafile.flush()
 
-# End of all blocks/trials
+        # --- Check if we hit a break point ---
+        if trial_overall_count in break_points:
+            # Update break_text_stim with appropriate message
+            if trial_overall_count == n_trials_total // 3:
+                completed_fraction = "one third"
+            elif trial_overall_count == (2 * n_trials_total) // 3:
+                completed_fraction = "two thirds"
+            else:
+                completed_fraction = "a portion"
+
+            break_text_stim.text = (
+                f"You have completed {completed_fraction} of the trials.\n\n"
+                "The task will automatically continue in 1 minute.\n\n"
+                "Feel free to rest your eyes."
+            )
+            break_text_stim.draw()
+            win.flip()
+            # Wait for 60 seconds (1 minute)
+            core.wait(60)
+            # After wait, continue automatically
+
+###################################
+# END OF ALL BLOCKS/TRIALS
+###################################
 EEG_config.send_trigger(triggers['experiment_end'])
 end_time = datetime.now()
 info['end_time'] = end_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -509,21 +544,23 @@ info['final_high_distance'] = gv['high_distance']
 # Overwrite the final row with updated info (including final calibration)
 if info['trial_count'] > 0:
     datafile.close()
-    with open(filename + '.csv', 'r+') as datafile:
-        lines = datafile.readlines()
-        # Replace last line with the updated final info
+    with open(filename + '.csv', 'r+') as datafile_handle:
+        lines = datafile_handle.readlines()
+        # Replace last line with updated final info
         lines[-1] = ','.join(str(info[var]) for var in log_vars) + '\n'
-        datafile.seek(0)
-        datafile.writelines(lines)
-        datafile.flush()
+        datafile_handle.seek(0)
+        datafile_handle.writelines(lines)
+        datafile_handle.flush()
 
+# Final Instructions Screen
 instructions_txt.text = (
     "Well done! \n\nYou have completed the task.\n\n"
+    "Thank you for your participation."
 )
 instructions_txt.draw()
 win.flip()
 hf.exit_q(win)
-keys = event.waitKeys(keyList=['space'], maxWait=10)
+event.waitKeys(keyList=['space'], maxWait=10)
 event.clearEvents()
 win.close()
 core.quit()

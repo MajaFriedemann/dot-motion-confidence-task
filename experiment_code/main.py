@@ -1,7 +1,5 @@
 """
-random dot motion task with confidence ratings
-
-Maja Friedemann 2025
+random dot motion task with confidence ratings, with scheduled breaks
 """
 
 ###################################
@@ -11,8 +9,8 @@ import numpy as np
 import os
 from datetime import datetime
 from psychopy import gui, visual, core, data, event, monitors
-import pandas as pd  # For reading Excel files
-import ctypes  # For hiding the mouse cursor on Windows
+import pandas as pd
+import ctypes
 
 import helper_functions as hf
 from RDK_3_sets import create_dot_motion_stimulus_n_sets
@@ -40,17 +38,16 @@ if not dlg.OK:
 # TASK VARIABLES
 ###################################
 gv = dict(
-    n_trials=300,  # number of trials (set to 300 in actual experiment)
-    dot_display_time=1.0,  # duration of dot display (in seconds)
+    n_trials=300,           # total number of trials
+    dot_display_time=1.0,   # duration of dot display (in seconds)
     inter_trial_interval=[0.5, 1.0],  # uniform distribution from 0.5–1s
-    response_keys=['d', 'k'],  # keys for blue/orange responses
-    low_coherence=None,  # from calibration data
-    high_coherence=None,  # from calibration data
-    low_distance=None,  # from calibration data
-    high_distance=None,  # from calibration data
-    bonus_factor=0.02  # multiply by number of correct trials
+    response_keys=['d', 'k'],         # keys for blue/orange responses
+    low_coherence=None,     # from calibration data
+    high_coherence=None,    # from calibration data
+    low_distance=None,      # from calibration data
+    high_distance=None,     # from calibration data
+    bonus_factor=0.02       # multiply by number of correct trials
 )
-
 
 ###################################
 # LOAD CALIBRATION DATA
@@ -69,7 +66,6 @@ def load_calibration_data(participant_number):
 
     df = pd.read_csv(file_path)
 
-    # Force these columns to numeric (float)
     required_columns = [
         'final_low_coherence', 'final_high_coherence',
         'final_low_distance', 'final_high_distance'
@@ -80,7 +76,7 @@ def load_calibration_data(participant_number):
             f"is missing required columns: {required_columns}"
         )
 
-    # Convert the columns to float, in case they're read as strings
+    # Convert them to float
     for col in required_columns:
         df[col] = pd.to_numeric(df[col], errors='coerce')
 
@@ -94,15 +90,14 @@ def load_calibration_data(participant_number):
 
 participant_number = expInfo['participant nr']
 calibration_data = load_calibration_data(participant_number)
-gv['low_coherence'] = calibration_data['low_coherence']
+gv['low_coherence']  = calibration_data['low_coherence']
 gv['high_coherence'] = calibration_data['high_coherence']
-gv['low_distance'] = calibration_data['low_distance']
-gv['high_distance'] = calibration_data['high_distance']
+gv['low_distance']   = calibration_data['low_distance']
+gv['high_distance']  = calibration_data['high_distance']
 
 ###################################
 # DATA SAVING
 ###################################
-# All the variables we want to track
 info = dict(
     expName=expName,
     curec_ID=curecID,
@@ -119,24 +114,24 @@ info = dict(
     trial_count=0,
 
     # coherence/distance numeric & string labels
-    coherence=None,  # numeric coherence
-    coherence_level=None,  # 'low' or 'high'
-    distance=None,  # numeric distance
-    distance_level=None,  # 'low' or 'high'
+    coherence=None,
+    coherence_level=None,
+    distance=None,
+    distance_level=None,
 
-    direction=None,  # motion direction (numeric)
-    reference=None,  # numeric angle for boundary
-    signal_delay=None,  # in seconds
+    direction=None,
+    reference=None,
+    signal_delay=None,
 
-    correct_response=None,  # 'CW' or 'CCW'
-    participant_response=None,  # 'CW' or 'CCW'
-    correct=None,  # True/False
+    correct_response=None,
+    participant_response=None,
+    correct=None,
     correct_response_colour=None,
     participant_response_colour=None,
 
-    response_time=None,  # time to respond
-    confidence_start_position=None,  # 50-100
-    confidence_rating=None,  # 50–100
+    response_time=None,
+    confidence_start_position=None,
+    confidence_rating=None,
     confidence_response_time=None,
     confidence_adjustments_steps=None,
     confidence_adjustments_times=None,
@@ -144,7 +139,6 @@ info = dict(
     bonus_payment=None
 )
 
-# Create a CSV file with these columns in order
 log_vars = list(info.keys())
 if not os.path.exists('data'):
     os.mkdir('data')
@@ -174,7 +168,7 @@ if frame_rate is None or frame_rate < 1:
 win.setMouseVisible(False)
 mouse = event.Mouse(visible=False, win=win)
 mouse.setVisible(False)
-if os.name == 'nt':  # Hide cursor on Windows
+if os.name == 'nt':
     ctypes.windll.user32.ShowCursor(False)
 
 # EEG triggers
@@ -194,7 +188,6 @@ triggers = dict(
 send_triggers = expInfo['eeg (y/n)'].lower() == 'y'
 EEG_config = hf.EEGConfig(triggers, send_triggers)
 
-# CLOCK
 clock = core.Clock()
 
 ###################################
@@ -218,21 +211,12 @@ instructions_txt = visual.TextStim(
     color='white',
     font='Arial'
 )
-instructions_top_txt = visual.TextStim(
-    win=win,
-    text="Instructions",
-    height=1,
-    pos=[0, 7.5],
-    wrapWidth=30,
-    color='white',
-    font='Arial'
-)
 dot_parameters = {
     'n_dot_sets': 3,
     'random_dot_behaviour': 'random_position',
     'duration': gv['dot_display_time'],
-    'aperture_diameter': 11,
-    'fixation_diameter': 0.45,
+    'aperture_diameter': 8.5,
+    'fixation_diameter': 0.4,
     'dot_diameter': 0.16,
     'dot_density': 1,
     'speed': 2
@@ -262,7 +246,7 @@ fixation = visual.ShapeStim(
 blue_circle = visual.Circle(
     win,
     radius=0.3,
-    pos=(-9, 0),  # Left side of the screen
+    pos=(-9, 0),
     fillColor='blue',
     lineColor=None,
     units='deg'
@@ -270,12 +254,24 @@ blue_circle = visual.Circle(
 orange_circle = visual.Circle(
     win,
     radius=0.3,
-    pos=(9, 0),  # Right side of the screen
+    pos=(9, 0),
     fillColor='orange',
     lineColor=None,
     units='deg'
 )
 
+# Break screen stimulus:
+break_text_stim = visual.TextStim(
+    win=win,
+    text="Break! You have completed X out of Y trials.\n\n"
+         "The task will automatically continue in 1 minute.\n\n"
+         "Feel free to rest your eyes.\n\n",
+    height=1,
+    pos=(0, 0),
+    wrapWidth=30,
+    color='white',
+    font='Arial'
+)
 
 ###################################
 # INSTRUCTIONS
@@ -291,7 +287,7 @@ event.clearEvents()
 instructions_txt.text = (
     "Welcome back to the dot motion task! As in your practice sessions, you'll see moving dots appearing within a circle. "
     "Your task will be to carefully observe their overall direction of motion and make a judgment about it afterwards. "
-    "Try to keep your eyes focused on the central cross throughout each trial, as this will help you perceive the motion better.\n\n"
+    "Try to keep your eyes focused on the central cross throughout each trial and please avoid eye movements, as this will help you perceive the motion better.\n\n"
     "Press SPACE to continue."
 )
 instructions_txt.draw()
@@ -319,7 +315,7 @@ instructions_txt.text = (
     "You'll see a scale ranging from 50% to 100%. A rating of 50% means you were completely guessing on your most recent trial, "
     "while 100% means you were absolutely certain about the response. "
     "The slider marker will start at a random position on the scale. You can adjust it using the same blue and orange response keys "
-    "to move left or right on the scale. Then press SPACE to confirm your rating.\n\n"
+    "to move left or right on the scale. You must move the slider at least once before pressing SPACE to confirm your rating.\n\n"
     "Press SPACE to continue."
 )
 instructions_txt.draw()
@@ -352,40 +348,71 @@ win.flip()
 event.waitKeys(keyList=['space'])
 event.clearEvents()
 
+############################################
+# BUILD A BALANCED TRIAL LIST
+############################################
+n_trials_total = gv['n_trials']  # e.g. 300
+n_per_condition = n_trials_total // 4  # 75
+n_confidence = n_per_condition // 3    # e.g., 25
+n_no_conf = n_per_condition - n_confidence  # e.g., 50
+
+conditions = [
+    dict(coherence=gv['low_coherence'],  coherence_level='low',
+         distance=gv['low_distance'],   distance_level='low'),
+    dict(coherence=gv['low_coherence'],  coherence_level='low',
+         distance=gv['high_distance'],  distance_level='high'),
+    dict(coherence=gv['high_coherence'], coherence_level='high',
+         distance=gv['low_distance'],   distance_level='low'),
+    dict(coherence=gv['high_coherence'], coherence_level='high',
+         distance=gv['high_distance'],  distance_level='high')
+]
+
+trial_list = []
+for cond in conditions:
+    for _ in range(n_confidence):
+        tr = dict(**cond)
+        tr['confidence'] = True
+        trial_list.append(tr)
+    for _ in range(n_no_conf):
+        tr = dict(**cond)
+        tr['confidence'] = False
+        trial_list.append(tr)
+
+np.random.shuffle(trial_list)
+if len(trial_list) != n_trials_total:
+    raise ValueError(f"Trial list has {len(trial_list)} but expected {n_trials_total}.")
 
 ###################################
-# TASK
+# RUN THE TASK
 ###################################
 EEG_config.send_trigger(EEG_config.triggers['experiment_start'])
 start_time = datetime.now()
 info['start_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
+
 correct_responses = 0
 
-for trial in range(gv['n_trials']):
+# We'll schedule breaks after 1/3 and 2/3
+break_points = {
+    n_trials_total // 3,
+    (2 * n_trials_total) // 3
+}
+
+for trial_num, trial_dict in enumerate(trial_list, start=1):
+
     EEG_config.send_trigger(EEG_config.triggers['trial_start'])
-    trial_num = trial + 1
 
-    # 1) Choose signal_delay, direction, coherence, distance
+    coherence_val  = trial_dict['coherence']
+    distance_val   = trial_dict['distance']
+    confidence_ask = trial_dict['confidence']
+
+    coherence_level = trial_dict['coherence_level']
+    distance_level  = trial_dict['distance_level']
+
+    # Random direction + random signal_delay
+    direction    = round(np.random.uniform(1, 360), 0)
     signal_delay = np.random.uniform(0.4, 0.8)
-    direction = round(np.random.uniform(1, 360), 0)
 
-    # Determine coherence numeric & level
-    if np.random.choice([True, False]):  # randomly pick high or low
-        coherence_val = gv['high_coherence']
-        coherence_level = 'high'
-    else:
-        coherence_val = gv['low_coherence']
-        coherence_level = 'low'
-
-    # Determine distance numeric & level
-    if np.random.choice([True, False]):
-        distance_val = gv['high_distance']
-        distance_level = 'high'
-    else:
-        distance_val = gv['low_distance']
-        distance_level = 'low'
-
-    # 2) Decide the correct reference side
+    # Decide reference side
     if np.random.choice([True, False]):
         reference_direction = 'CW'
         reference_angle = (direction + distance_val) % 360
@@ -393,41 +420,34 @@ for trial in range(gv['n_trials']):
         reference_direction = 'CCW'
         reference_angle = (direction - distance_val) % 360
 
-    print(
-        f"Trial {trial_num}: direction={direction}, "
-        f"coherence={coherence_val}({coherence_level}), "
-        f"distance={distance_val}({distance_level}), reference={reference_angle}"
-    )
-
-    # 3) Show fixation cross
+    # 1) Fixation
     stimuli = [aperture_outline, fixation]
     delay_time = np.random.uniform(gv['inter_trial_interval'][0], gv['inter_trial_interval'][1])
     hf.draw_all_stimuli(win, stimuli, delay_time)
     hf.exit_q(win)
 
-    # 4) Show dots
+    # 2) Show dots
     EEG_config.send_trigger(EEG_config.triggers['dots_onset'])
     create_dot_motion_stimulus_n_sets(
         win, frame_rate, direction, coherence_val, signal_delay, dot_parameters, EEG_config
     )
 
-    # 5) Show reference direction (split arcs)
-    # Decide arc colors
+    # 3) Reference direction arcs
     if 0 <= reference_angle < 180:
-        arc_CW_color = 'orange'
+        arc_CW_color  = 'orange'
         arc_CCW_color = 'blue'
     else:
-        arc_CW_color = 'blue'
+        arc_CW_color  = 'blue'
         arc_CCW_color = 'orange'
 
-    arc_CW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2, reference_angle, reference_angle - 90,
-                         arc_CW_color)
-    arc_CCW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2, reference_angle, reference_angle + 90,
-                          arc_CCW_color)
+    arc_CW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2,
+                         reference_angle, reference_angle - 90, arc_CW_color)
+    arc_CCW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2,
+                          reference_angle, reference_angle + 90, arc_CCW_color)
     ref_line = visual.Line(
         win,
-        start=((dot_parameters['aperture_diameter'] / 2 - 1) * np.cos(np.deg2rad(reference_angle)),
-               (dot_parameters['aperture_diameter'] / 2 - 1) * np.sin(np.deg2rad(reference_angle))),
+        start=((dot_parameters['aperture_diameter'] / 2 - 2) * np.cos(np.deg2rad(reference_angle)),
+               (dot_parameters['aperture_diameter'] / 2 - 2) * np.sin(np.deg2rad(reference_angle))),
         end=((dot_parameters['aperture_diameter'] / 2 + 1) * np.cos(np.deg2rad(reference_angle)),
              (dot_parameters['aperture_diameter'] / 2 + 1) * np.sin(np.deg2rad(reference_angle))),
         lineColor='white', lineWidth=6
@@ -437,13 +457,12 @@ for trial in range(gv['n_trials']):
     hf.draw_all_stimuli(win, stimuli)
     hf.exit_q(win)
 
-    # 6) Response
+    # 4) Participant response
     response_key, response_time = hf.check_key_press(win, gv['response_keys'])
     EEG_config.send_trigger(EEG_config.triggers['response_made'])
 
-    # Map participant's key press to 'CW' or 'CCW'
+    # Map key press
     if 0 <= reference_angle < 180:
-        # reference in top half
         if response_key == gv['response_keys'][0]:
             chosen_direction = 'CCW'
             participant_color = 'blue'
@@ -451,7 +470,6 @@ for trial in range(gv['n_trials']):
             chosen_direction = 'CW'
             participant_color = 'orange'
     else:
-        # reference in bottom half
         if response_key == gv['response_keys'][0]:
             chosen_direction = 'CW'
             participant_color = 'blue'
@@ -465,55 +483,47 @@ for trial in range(gv['n_trials']):
     if is_correct:
         correct_responses += 1
 
-    # Determine the color for the correct side
-    if reference_direction == 'CW':
-        correct_color = arc_CW_color
-    else:
-        correct_color = arc_CCW_color
-
-    # 7) Feedback
+    # 5) Brief feedback
     stimuli = [aperture_outline, fixation, blue_circle, orange_circle]
     hf.draw_all_stimuli(win, stimuli, 0.5)
     hf.exit_q(win)
 
-    # 8) Confidence rating (random 1/3 of trials)
+    # 6) Confidence rating (1/3 of trials)
     confidence_start_position = None
     confidence_rating = None
     confidence_response_time = None
     confidence_adjustments = None
-    if np.random.choice([True, False, False]):
-        confidence_rating, confidence_response_time, confidence_start_position, confidence_adjustments = hf.get_confidence_rating(
-            win, gv, EEG_config)
+    if confidence_ask:
+        (confidence_rating,
+         confidence_response_time,
+         confidence_start_position,
+         confidence_adjustments) = hf.get_confidence_rating(win, gv, EEG_config)
 
-    # 9) Clear & wait
+    # 7) ITI
     fixation.color = 'white'
     win.flip()
     hf.exit_q(win)
     core.wait(1)
 
-    # 10) SAVE DATA for this trial
+    # 8) Log data
     info['trial_count'] = trial_num
-
-    info['coherence'] = coherence_val
+    info['coherence']       = coherence_val
     info['coherence_level'] = coherence_level
-    info['distance'] = distance_val
-    info['distance_level'] = distance_level
-
-    info['direction'] = direction
-    info['reference'] = reference_angle
-    info['signal_delay'] = signal_delay
-
-    info['correct_response'] = reference_direction  # 'CW'/'CCW'
-    info['participant_response'] = chosen_direction  # 'CW'/'CCW'
-    info['correct'] = is_correct  # True/False
-
-    info['correct_response_colour'] = correct_color
+    info['distance']        = distance_val
+    info['distance_level']  = distance_level
+    info['direction']       = direction
+    info['reference']       = reference_angle
+    info['signal_delay']    = signal_delay
+    info['correct_response'] = reference_direction
+    info['participant_response'] = chosen_direction
+    info['correct'] = is_correct
+    info['correct_response_colour'] = arc_CW_color if reference_direction=='CW' else arc_CCW_color
     info['participant_response_colour'] = participant_color
-
     info['response_time'] = response_time
     info['confidence_start_position'] = confidence_start_position
     info['confidence_rating'] = confidence_rating
     info['confidence_response_time'] = confidence_response_time
+
     if confidence_adjustments is not None:
         info['confidence_adjustments_steps'] = confidence_adjustments['step_list']
         info['confidence_adjustments_times'] = confidence_adjustments['time_list']
@@ -524,12 +534,42 @@ for trial in range(gv['n_trials']):
     datafile.write(','.join(str(info[var]) for var in log_vars) + '\n')
     datafile.flush()
 
-# END OF ALL TRIALS
+    # --- Check if we hit a break point ---
+    if trial_num in break_points:
+        # # Show break text
+        # break_text_stim.text = (
+        #     f"You have completed {trial_num} out of {n_trials_total} trials.\n\n"
+        #     "The task will automatically continue in 1 minute.\n\n"
+        #     "Feel free to rest your eyes."
+        # )
+        # Update break_text_stim with appropriate message
+        if trial_num == n_trials_total // 3:
+            completed_fraction = "one third"
+        elif trial_num == (2 * n_trials_total) // 3:
+            completed_fraction = "two thirds"
+        else:
+            completed_fraction = "a portion"
+
+        break_text_stim.text = (
+            f"You have completed {completed_fraction} of the trials.\n\n"
+            "The task will automatically continue in 1 minute.\n\n"
+            "Feel free to rest your eyes."
+        )
+        break_text_stim.draw()
+        win.flip()
+        # Wait for 60 seconds (1 minute)
+        core.wait(60)
+        # After wait, continue automatically
+
+
+# --- End of all trials ---
 EEG_config.send_trigger(EEG_config.triggers['experiment_end'])
 end_time = datetime.now()
 info['end_time'] = end_time.strftime("%Y-%m-%d %H:%M:%S")
 duration = end_time - start_time
 info['duration'] = str(duration)
+
+# Bonus
 bonus = round(correct_responses * gv['bonus_factor'], 2)
 info['bonus_payment'] = bonus
 
@@ -541,18 +581,17 @@ instructions_txt.text = (
 instructions_txt.draw()
 win.flip()
 hf.exit_q(win)
-core.wait(10)
+core.wait(5)
 
-# Overwrite the final row with experiment-level info
+# Overwrite final row w/ updated info
 if info['trial_count'] > 0:
     datafile.close()
-    with open(filename + '.csv', 'r+') as datafile:
-        lines = datafile.readlines()
-        # Replace last line with updated final info
+    with open(filename + '.csv', 'r+') as f:
+        lines = f.readlines()
         lines[-1] = ','.join(str(info[var]) for var in log_vars) + '\n'
-        datafile.seek(0)
-        datafile.writelines(lines)
-        datafile.flush()
+        f.seek(0)
+        f.writelines(lines)
+        f.flush()
 
 win.close()
 core.quit()

@@ -44,13 +44,13 @@ if not dlg.OK:
 # TASK VARIABLES
 ###################################
 gv = dict(
-    n_trials=20,  # number of trials for training
+    n_trials=20,  # total number of training trials
     dot_display_time=1.0,  # duration of dot display (in seconds)
     inter_trial_interval=[0.5, 1.0],  # uniform distribution from 0.5–1s
     response_keys=['d', 'k'],  # keys for blue/orange responses
     low_coherence=0.5,  # easy for training
     high_coherence=0.7,  # easy for training
-    low_distance=30,   # easy for training
+    low_distance=30,  # easy for training
     high_distance=50,  # easy for training
 )
 
@@ -74,24 +74,24 @@ info = dict(
     trial_count=0,
 
     # coherence/distance numeric & string labels
-    coherence=None,         # numeric coherence
-    coherence_level=None,   # 'low' or 'high'
-    distance=None,          # numeric distance
-    distance_level=None,    # 'low' or 'high'
+    coherence=None,  # numeric coherence
+    coherence_level=None,  # 'low' or 'high'
+    distance=None,  # numeric distance
+    distance_level=None,  # 'low' or 'high'
 
-    direction=None,         # motion direction (numeric)
-    reference=None,         # numeric angle for boundary
-    signal_delay=None,      # in seconds
+    direction=None,  # motion direction (numeric)
+    reference=None,  # numeric angle for boundary
+    signal_delay=None,  # in seconds
 
-    correct_response=None,        # 'CW' or 'CCW'
-    participant_response=None,    # 'CW' or 'CCW'
-    correct=None,                # True/False
+    correct_response=None,  # 'CW' or 'CCW'
+    participant_response=None,  # 'CW' or 'CCW'
+    correct=None,  # True/False
     correct_response_colour=None,
     participant_response_colour=None,
 
-    response_time=None,           # time to respond
+    response_time=None,  # time to respond
     confidence_start_position=None,  # 50-100
-    confidence_rating=None,       # 50–100
+    confidence_rating=None,  # 50–100
     confidence_response_time=None,
     confidence_adjustments_steps=None,
     confidence_adjustments_times=None,
@@ -184,8 +184,8 @@ dot_parameters = {
     'n_dot_sets': 3,
     'random_dot_behaviour': 'random_position',
     'duration': gv['dot_display_time'],
-    'aperture_diameter': 11,
-    'fixation_diameter': 0.45,
+    'aperture_diameter': 8.5,
+    'fixation_diameter': 0.4,
     'dot_diameter': 0.16,
     'dot_density': 1,
     'speed': 2
@@ -243,7 +243,7 @@ event.clearEvents()
 instructions_txt.text = (
     "Welcome to the dot motion task! In this experiment, you'll see moving dots appearing within a circle. "
     "Your task will be to carefully observe their overall direction of motion and make a judgment about it afterwards. "
-    "Try to keep your eyes focused on the central cross throughout each trial, as this will help you perceive the motion better.\n\n"
+    "Try to keep your eyes focused on the central cross throughout each trial and please avoid eye movements, as this will help you perceive the motion better.\n\n"
     "Press SPACE to learn about making your responses."
 )
 instructions_txt.draw()
@@ -271,7 +271,7 @@ instructions_txt.text = (
     "You'll see a scale ranging from 50% to 100%. A rating of 50% means you were completely guessing on your most recent trial, "
     "while 100% means you were absolutely certain about the response. "
     "The slider marker will start at a random position on the scale. You can adjust it using the same blue and orange response keys "
-    "to move left or right on the scale. Then press SPACE to confirm your rating.\n\n"
+    "to move left or right on the scale. You must move the slider at least once before pressing SPACE to confirm your rating.\n\n"
     "Press SPACE to learn about the practice session."
 )
 instructions_txt.draw()
@@ -294,6 +294,45 @@ event.waitKeys(keyList=['space'])
 event.clearEvents()
 
 ###################################
+# BUILD A BALANCED TRIAL LIST
+###################################
+# We have 4 conditions: (lowC,lowD), (lowC,highD), (highC,lowD), (highC,highD).
+# We want 5 trials per condition => total 20.
+# Of those 5, let's say 2 ask for confidence, 3 do not, so it's balanced within each condition.
+
+conditions = [
+    dict(coherence=gv['low_coherence'], coherence_level='low',
+         distance=gv['low_distance'], distance_level='low'),
+    dict(coherence=gv['low_coherence'], coherence_level='low',
+         distance=gv['high_distance'], distance_level='high'),
+    dict(coherence=gv['high_coherence'], coherence_level='high',
+         distance=gv['low_distance'], distance_level='low'),
+    dict(coherence=gv['high_coherence'], coherence_level='high',
+         distance=gv['high_distance'], distance_level='high')
+]
+
+trial_list = []
+for cond in conditions:
+    # 2 trials with confidence=True
+    for _ in range(2):
+        tdict = dict(**cond)
+        tdict['confidence'] = True
+        trial_list.append(tdict)
+    # 3 trials with confidence=False
+    for _ in range(3):
+        tdict = dict(**cond)
+        tdict['confidence'] = False
+        trial_list.append(tdict)
+
+# Shuffle once
+np.random.shuffle(trial_list)
+
+# Sanity check length
+assert len(trial_list) == gv['n_trials'], (
+    f"Expected {gv['n_trials']} trials, got {len(trial_list)}"
+)
+
+###################################
 # TASK
 ###################################
 EEG_config.send_trigger(EEG_config.triggers['experiment_start'])
@@ -301,31 +340,22 @@ start_time = datetime.now()
 info['start_time'] = start_time.strftime("%Y-%m-%d %H:%M:%S")
 correct_responses = 0
 
-for trial in range(gv['n_trials']):
-    EEG_config.send_trigger(EEG_config.triggers['trial_start'])
-    trial_num = trial + 1
+# Main loop: iterate over pre-built trial_list
+for trial_num, trial_dict in enumerate(trial_list, start=1):
 
-    # 1) Choose signal_delay, direction, coherence, distance
+    EEG_config.send_trigger(EEG_config.triggers['trial_start'])
+
+    coherence_val = trial_dict['coherence']
+    coherence_level = trial_dict['coherence_level']
+    distance_val = trial_dict['distance']
+    distance_level = trial_dict['distance_level']
+    ask_confidence = trial_dict['confidence']
+
+    # direction & signal_delay remain random each trial
     signal_delay = np.random.uniform(0.4, 0.8)
     direction = round(np.random.uniform(1, 360), 0)
 
-    # Determine coherence numeric & level
-    if np.random.choice([True, False]):  # randomly pick high or low
-        coherence_val = gv['high_coherence']
-        coherence_level = 'high'
-    else:
-        coherence_val = gv['low_coherence']
-        coherence_level = 'low'
-
-    # Determine distance numeric & level
-    if np.random.choice([True, False]):
-        distance_val = gv['high_distance']
-        distance_level = 'high'
-    else:
-        distance_val = gv['low_distance']
-        distance_level = 'low'
-
-    # 2) Decide the correct reference side
+    # Decide the correct reference side randomly
     if np.random.choice([True, False]):
         reference_direction = 'CW'
         reference_angle = (direction + distance_val) % 360
@@ -336,23 +366,23 @@ for trial in range(gv['n_trials']):
     print(
         f"Trial {trial_num}: direction={direction}, "
         f"coherence={coherence_val}({coherence_level}), "
-        f"distance={distance_val}({distance_level}), reference={reference_angle}"
+        f"distance={distance_val}({distance_level}), reference={reference_angle}, "
+        f"confidence? {ask_confidence}"
     )
 
-    # 3) Show fixation cross
+    # 1) Show fixation cross
     stimuli = [aperture_outline, fixation]
     delay_time = np.random.uniform(gv['inter_trial_interval'][0], gv['inter_trial_interval'][1])
     hf.draw_all_stimuli(win, stimuli, delay_time)
     hf.exit_q(win)
 
-    # 4) Show dots
+    # 2) Show dots
     EEG_config.send_trigger(EEG_config.triggers['dots_onset'])
     create_dot_motion_stimulus_n_sets(
         win, frame_rate, direction, coherence_val, signal_delay, dot_parameters, EEG_config
     )
 
-    # 5) Show reference direction (split arcs)
-    # Decide arc colors
+    # 3) Show reference direction (split arcs)
     if 0 <= reference_angle < 180:
         arc_CW_color = 'orange'
         arc_CCW_color = 'blue'
@@ -360,12 +390,19 @@ for trial in range(gv['n_trials']):
         arc_CW_color = 'blue'
         arc_CCW_color = 'orange'
 
-    arc_CW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2, reference_angle, reference_angle - 90, arc_CW_color)
-    arc_CCW = hf.draw_arc(win, dot_parameters['aperture_diameter'] / 2, reference_angle, reference_angle + 90, arc_CCW_color)
+    arc_CW = hf.draw_arc(
+        win, dot_parameters['aperture_diameter'] / 2,
+        reference_angle, reference_angle - 90, arc_CW_color
+    )
+    arc_CCW = hf.draw_arc(
+        win, dot_parameters['aperture_diameter'] / 2,
+        reference_angle, reference_angle + 90, arc_CCW_color
+    )
+
     ref_line = visual.Line(
         win,
-        start=((dot_parameters['aperture_diameter'] / 2 - 1) * np.cos(np.deg2rad(reference_angle)),
-               (dot_parameters['aperture_diameter'] / 2 - 1) * np.sin(np.deg2rad(reference_angle))),
+        start=((dot_parameters['aperture_diameter'] / 2 - 2) * np.cos(np.deg2rad(reference_angle)),
+               (dot_parameters['aperture_diameter'] / 2 - 2) * np.sin(np.deg2rad(reference_angle))),
         end=((dot_parameters['aperture_diameter'] / 2 + 1) * np.cos(np.deg2rad(reference_angle)),
              (dot_parameters['aperture_diameter'] / 2 + 1) * np.sin(np.deg2rad(reference_angle))),
         lineColor='white', lineWidth=6
@@ -375,7 +412,7 @@ for trial in range(gv['n_trials']):
     hf.draw_all_stimuli(win, stimuli)
     hf.exit_q(win)
 
-    # 6) Response
+    # 4) Response
     response_key, response_time = hf.check_key_press(win, gv['response_keys'])
     EEG_config.send_trigger(EEG_config.triggers['response_made'])
 
@@ -403,42 +440,44 @@ for trial in range(gv['n_trials']):
     if is_correct:
         correct_responses += 1
 
-    # Determine the color for the correct side
+    # Determine color for the correct side
     if reference_direction == 'CW':
         correct_color = arc_CW_color
     else:
         correct_color = arc_CCW_color
 
-    # 7) Feedback
+    # 5) Show feedback for training
     stimuli = [aperture_outline, fixation, blue_circle, orange_circle]
     hf.draw_all_stimuli(win, stimuli, 0.5)
     hf.exit_q(win)
 
-    # Because this is the training, we also give feedback on correctness
+    # Additional feedback: correct → green cross, incorrect → red cross
     if is_correct:
         fixation.color = 'lime'
     else:
         fixation.color = 'red'
-    stimuli = [aperture_outline, fixation, blue_circle, orange_circle]
     hf.draw_all_stimuli(win, stimuli, 1)
     hf.exit_q(win)
 
-    # 8) Confidence rating (random 1/3 of trials)
+    # 6) Confidence rating (based on ask_confidence)
     confidence_start_position = None
     confidence_rating = None
     confidence_response_time = None
     confidence_adjustments = None
-    if np.random.choice([True, False, False]):
-        confidence_rating, confidence_response_time, confidence_start_position, confidence_adjustments = hf.get_confidence_rating(
-            win, gv, EEG_config)
 
-    # 9) Clear & wait
+    if ask_confidence:
+        (confidence_rating,
+         confidence_response_time,
+         confidence_start_position,
+         confidence_adjustments) = hf.get_confidence_rating(win, gv, EEG_config)
+
+    # 7) Clear & wait
     fixation.color = 'white'
     win.flip()
     hf.exit_q(win)
     core.wait(1)
 
-    # 10) SAVE DATA for this trial
+    # 8) SAVE DATA for this trial
     info['trial_count'] = trial_num
 
     info['coherence'] = coherence_val
@@ -452,8 +491,7 @@ for trial in range(gv['n_trials']):
 
     info['correct_response'] = reference_direction  # 'CW'/'CCW'
     info['participant_response'] = chosen_direction  # 'CW'/'CCW'
-    info['correct'] = is_correct  # True/False
-
+    info['correct'] = is_correct
     info['correct_response_colour'] = correct_color
     info['participant_response_colour'] = participant_color
 
@@ -461,6 +499,7 @@ for trial in range(gv['n_trials']):
     info['confidence_start_position'] = confidence_start_position
     info['confidence_rating'] = confidence_rating
     info['confidence_response_time'] = confidence_response_time
+
     if confidence_adjustments is not None:
         info['confidence_adjustments_steps'] = confidence_adjustments['step_list']
         info['confidence_adjustments_times'] = confidence_adjustments['time_list']
