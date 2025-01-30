@@ -13,7 +13,6 @@ import numpy as np
 import os
 from datetime import datetime
 from psychopy import gui, visual, core, data, event, monitors
-import pandas as pd  # For reading Excel files
 import ctypes  # For hiding the mouse cursor on Windows
 
 import helper_functions as hf
@@ -85,7 +84,6 @@ info = dict(
     coherence_level=None,  # 'low', 'medium', or 'high'
     distance=None,  # numeric distance
     distance_level=None,  # 'low', 'medium', or 'high'
-
     direction=None,  # motion direction (numeric)
     reference=None,  # numeric angle for boundary
     signal_delay=None,  # in seconds
@@ -96,12 +94,17 @@ info = dict(
     correct_response_colour=None,
     participant_response_colour=None,
 
-    response_time=None,  # time to respond
-    confidence_start_position=None,  # 50-100
-    confidence_rating=None,  # 50–100 (not used in calibration)
+    response_time=None,
+    confidence_start_position=None,
+    confidence_rating=None,
     confidence_response_time=None,
     confidence_adjustments_steps=None,
     confidence_adjustments_times=None,
+
+    # NEW FIELDS: block, mediums
+    block_type=None,
+    current_medium_coherence=None,
+    current_medium_distance=None,
 
     # We'll store the final calibration in these fields for the last row
     final_low_coherence=None,
@@ -160,7 +163,9 @@ triggers = dict(
     confidence_increase=8,
     confidence_decrease=9,
     confidence_response_made=10,
-    experiment_end=11
+    experiment_end=11,
+    pause_start=12,
+    pause_end=13
 )
 send_triggers = expInfo['eeg (y/n)'].lower() == 'y'
 EEG_config = hf.EEGConfig(triggers, send_triggers)
@@ -277,8 +282,8 @@ gv['high_distance'] = gv['medium_distance'] * 2.0
 # Define total trials and break points
 n_trials_total = gv['n_blocks'] * gv['n_trials_per_block']  # 8 * 30 = 240
 break_points = {
-    n_trials_total // 3,         # After 80 trials
-    (2 * n_trials_total) // 3    # After 160 trials
+    n_trials_total // 3,  # After 80 trials
+    (2 * n_trials_total) // 3  # After 160 trials
 }
 
 # We'll flip True/False each block
@@ -397,7 +402,7 @@ for block_i in range(gv['n_blocks']):
         )
         stimuli = [aperture_outline, arc_CW, arc_CCW, ref_line, fixation, blue_circle, orange_circle]
         EEG_config.send_trigger(triggers['reference_onset'])
-        hf.draw_all_stimuli(win, stimuli, wait=0.01)  # Minimal wait to ensure rendering
+        hf.draw_all_stimuli(win, stimuli, wait=0.01)  # Minimal wait
         hf.exit_q(win)
 
         # -------------------------
@@ -460,7 +465,7 @@ for block_i in range(gv['n_blocks']):
         hf.exit_q(win)
 
         # -------------------------
-        # 7) Confidence rating (DISABLED in calibration)
+        # 7) Confidence rating (DISABLED)
         # -------------------------
         confidence_start_position = None
         confidence_rating = None
@@ -479,6 +484,11 @@ for block_i in range(gv['n_blocks']):
         # 9) SAVE DATA for this trial
         # -------------------------
         info['trial_count'] = trial_overall_count
+
+        # New fields:
+        info['block_type'] = block_type
+        info['current_medium_coherence'] = gv['medium_coherence']
+        info['current_medium_distance'] = gv['medium_distance']
 
         info['coherence'] = coherence_val
         info['coherence_level'] = coherence_level
@@ -507,7 +517,6 @@ for block_i in range(gv['n_blocks']):
 
         # --- Check if we hit a break point ---
         if trial_overall_count in break_points:
-            # Update break_text_stim with appropriate message
             if trial_overall_count == n_trials_total // 3:
                 completed_fraction = "one third"
             elif trial_overall_count == (2 * n_trials_total) // 3:
@@ -522,9 +531,12 @@ for block_i in range(gv['n_blocks']):
             )
             break_text_stim.draw()
             win.flip()
+            EEG_config.send_trigger(EEG_config.triggers['pause_start'])
             # Wait for 60 seconds (1 minute)
             core.wait(60)
             # After wait, continue automatically
+            EEG_config.send_trigger(EEG_config.triggers['pause_end'])
+
 
 ###################################
 # END OF ALL BLOCKS/TRIALS
@@ -535,24 +547,23 @@ info['end_time'] = end_time.strftime("%Y-%m-%d %H:%M:%S")
 duration = end_time - start_time
 info['duration'] = str(duration)
 
-# Store the final calibration values in `info` for the last CSV row
+# Store final calibration values
 info['final_low_coherence'] = gv['low_coherence']
 info['final_high_coherence'] = gv['high_coherence']
 info['final_low_distance'] = gv['low_distance']
 info['final_high_distance'] = gv['high_distance']
 
-# Overwrite the final row with updated info (including final calibration)
+# Overwrite the final row with updated info
 if info['trial_count'] > 0:
     datafile.close()
     with open(filename + '.csv', 'r+') as datafile_handle:
         lines = datafile_handle.readlines()
-        # Replace last line with updated final info
         lines[-1] = ','.join(str(info[var]) for var in log_vars) + '\n'
         datafile_handle.seek(0)
         datafile_handle.writelines(lines)
         datafile_handle.flush()
 
-# Final Instructions Screen
+# Final Screen
 instructions_txt.text = (
     "Well done! \n\nYou have completed the task.\n\n"
     "Thank you for your participation."

@@ -183,7 +183,9 @@ triggers = dict(
     confidence_increase=8,
     confidence_decrease=9,
     confidence_response_made=10,
-    experiment_end=11
+    experiment_end=11,
+    pause_start=12,
+    pause_end=13
 )
 send_triggers = expInfo['eeg (y/n)'].lower() == 'y'
 EEG_config = hf.EEGConfig(triggers, send_triggers)
@@ -557,9 +559,11 @@ for trial_num, trial_dict in enumerate(trial_list, start=1):
         )
         break_text_stim.draw()
         win.flip()
+        EEG_config.send_trigger(EEG_config.triggers['pause_start'])
         # Wait for 60 seconds (1 minute)
         core.wait(60)
         # After wait, continue automatically
+        EEG_config.send_trigger(EEG_config.triggers['pause_end'])
 
 
 # --- End of all trials ---
