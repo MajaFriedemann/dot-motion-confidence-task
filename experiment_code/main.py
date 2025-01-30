@@ -38,7 +38,7 @@ if not dlg.OK:
 # TASK VARIABLES
 ###################################
 gv = dict(
-    n_trials=300,           # total number of trials
+    n_trials=300,           # 300 total number of trials (must be divisble by 4)
     dot_display_time=1.0,   # duration of dot display (in seconds)
     inter_trial_interval=[0.5, 1.0],  # uniform distribution from 0.5–1s
     response_keys=['d', 'k'],         # keys for blue/orange responses
@@ -265,9 +265,7 @@ orange_circle = visual.Circle(
 # Break screen stimulus:
 break_text_stim = visual.TextStim(
     win=win,
-    text="Break! You have completed X out of Y trials.\n\n"
-         "The task will automatically continue in 1 minute.\n\n"
-         "Feel free to rest your eyes.\n\n",
+    text="",
     height=1,
     pos=(0, 0),
     wrapWidth=30,
@@ -553,9 +551,8 @@ for trial_num, trial_dict in enumerate(trial_list, start=1):
             completed_fraction = "a portion"
 
         break_text_stim.text = (
-            f"You have completed {completed_fraction} of the trials.\n\n"
-            "The task will automatically continue in 1 minute.\n\n"
-            "Feel free to rest your eyes."
+            f"You have completed {completed_fraction} of the task.\n\n"
+            "The task will automatically continue in 1 minute."
         )
         break_text_stim.draw()
         win.flip()

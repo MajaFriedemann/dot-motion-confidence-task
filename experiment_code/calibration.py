@@ -48,7 +48,7 @@ gv = dict(
 
     # Staircase / calibration settings
     n_blocks=8,  # number of alternating calibration blocks
-    n_trials_per_block=30,  # total = n_blocks * n_trials_per_block
+    n_trials_per_block=30,  # 30 total = n_blocks * n_trials_per_block
     medium_coherence=0.3,  # initial guess for "medium" coherence
     medium_distance=20,  # initial guess for "medium" distance
     coherence_step=0.01,  # staircase step size for coherence (2-down-1-up)
@@ -525,9 +525,8 @@ for block_i in range(gv['n_blocks']):
                 completed_fraction = "a portion"
 
             break_text_stim.text = (
-                f"You have completed {completed_fraction} of the trials.\n\n"
-                "The task will automatically continue in 1 minute.\n\n"
-                "Feel free to rest your eyes."
+                f"You have completed {completed_fraction} of the task.\n\n"
+                "The task will automatically continue in 1 minute."
             )
             break_text_stim.draw()
             win.flip()
