@@ -564,8 +564,7 @@ if info['trial_count'] > 0:
 
 # Final Screen
 instructions_txt.text = (
-    "Well done! \n\nYou have completed the task.\n\n"
-    "Thank you for your participation."
+    "Well done! \n\nPlease let the experimenter know that you are finished."
 )
 instructions_txt.draw()
 win.flip()

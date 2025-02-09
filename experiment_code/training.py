@@ -531,7 +531,7 @@ duration = end_time - start_time
 info['duration'] = str(duration)
 
 instructions_txt.text = (
-    "Well done! You have completed the training.\n\n"
+    "Please let the experimenter know that you are done.\n\n"
     f"You made {correct_responses} correct responses out of {gv['n_trials']} trials.\n\n"
     f"If you have any questions about the task, please ask the experimenter now."
 )
