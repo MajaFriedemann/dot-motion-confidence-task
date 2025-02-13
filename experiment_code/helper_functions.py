@@ -157,7 +157,8 @@ def get_confidence_rating(win, gv, EEG_config=None):
     left_key, right_key = gv['response_keys']
     confirm_key = 'space'
 
-    kb = keyboard.Keyboard()  # A single Keyboard object for event capture
+    # Create a Keyboard object without using waitRelease
+    kb = keyboard.Keyboard()
 
     # Prepare slider labels: positions 0..10 → 50..100%
     slider_labels = [50 + i * 5 for i in range(11)]
@@ -230,43 +231,54 @@ def get_confidence_rating(win, gv, EEG_config=None):
     break_loop = False
 
     while not break_loop:
-        # 1) Get all key events that happened since the last frame
-        key_events = kb.getKeys(keyList=[left_key, right_key, confirm_key],
-                                waitRelease=False, clear=False)
+        # Get key events (press + release) since last frame
+        key_events = kb.getKeys(
+            keyList=[left_key, right_key, confirm_key],
+            waitRelease=False,  # older PsychoPy versions require this
+            clear=False
+        )
+
+        # Keep track of which keys were "pressed" this frame to avoid multiple increments
+        pressed_this_frame = set()
 
         for evt in key_events:
-            # If user pressed space, that might be our confirmation
+            # evt.duration is None => key is currently down
+            # evt.duration is not None => key has been released
             if evt.name == confirm_key:
-                # Only confirm if the slider was moved at least once
-                if evt.duration is None and slider_moved:
-                    # user has pressed space => confirm
-                    if EEG_config is not None:
-                        EEG_config.send_trigger(EEG_config.triggers['confidence_response_made'])
-                    slider.markerColor = 'darkgreen'
-                    slider_rating_txt.color = 'darkgreen'
-                    break_loop = True
-                    break
-                # If slider wasn't moved yet, ignore this press
-
-            # If user pressed or released left_key
-            elif evt.name == left_key:
+                # If user pressed space (duration==None), might confirm
                 if evt.duration is None:
-                    # Key down event => track in keys_held
-                    keys_held.add(left_key)
-                else:
-                    # Key release
+                    # Only confirm if slider was moved
+                    if slider_moved:
+                        if EEG_config is not None:
+                            EEG_config.send_trigger(EEG_config.triggers['confidence_response_made'])
+                        slider.markerColor = 'darkgreen'
+                        slider_rating_txt.color = 'darkgreen'
+                        break_loop = True
+                        break
+                    # else ignore the press if slider not moved
+
+            # -- LEFT KEY LOGIC --
+            elif evt.name == left_key:
+                if evt.duration is None:  # Key down
+                    # If we haven't already processed a press for this key in this frame
+                    if left_key not in pressed_this_frame:
+                        keys_held.add(left_key)
+                        pressed_this_frame.add(left_key)
+                else:  # Key release
                     if left_key in keys_held:
                         keys_held.remove(left_key)
 
-            # If user pressed or released right_key
+            # -- RIGHT KEY LOGIC --
             elif evt.name == right_key:
-                if evt.duration is None:
-                    keys_held.add(right_key)
-                else:
+                if evt.duration is None:  # Key down
+                    if right_key not in pressed_this_frame:
+                        keys_held.add(right_key)
+                        pressed_this_frame.add(right_key)
+                else:  # Key release
                     if right_key in keys_held:
                         keys_held.remove(right_key)
 
-        # 2) Now check if left_key or right_key is currently held
+        # Check if left_key or right_key is held for continuous movement
         now = time.time()
 
         # Move left if enough time has passed and left_key is held
@@ -291,7 +303,7 @@ def get_confidence_rating(win, gv, EEG_config=None):
                     EEG_config.send_trigger(EEG_config.triggers['confidence_increase'])
             last_move_time = now
 
-        # 3) Update displayed rating, draw, flip
+        # Update displayed rating, draw, flip
         slider_rating_txt.text = f"{slider_labels[int(slider.markerPos)]}%"
         slider.draw()
         label_50.draw()
