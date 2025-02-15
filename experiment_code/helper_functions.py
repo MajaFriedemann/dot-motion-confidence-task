@@ -142,31 +142,192 @@ def draw_arc(win, radius, start_deg, end_deg, color, pos=(0, 0)):
     return visual.ShapeStim(win, vertices=vertices, closeShape=False, lineColor=color, pos=pos, lineWidth=6)
 
 
+# def get_confidence_rating(win, gv, EEG_config=None):
+#     """
+#     Displays a confidence rating Slider and allows press-and-hold movement
+#     for left/right keys. The participant MUST move the slider at least once
+#     before 'space' can confirm and end the rating.
+#
+#     Returns:
+#       (final_rating, response_time, confidence_start, adjustments_serialized)
+#
+#     Times are rounded to 4 decimals.
+#     """
+#
+#     left_key, right_key = gv['response_keys']
+#     confirm_key = 'space'
+#
+#     kb = keyboard.Keyboard()  # A single Keyboard object for event capture
+#
+#     # Prepare slider labels: positions 0..10 → 50..100%
+#     slider_labels = [50 + i * 5 for i in range(11)]
+#
+#     # Create the slider
+#     slider = visual.Slider(
+#         win=win,
+#         ticks=list(range(11)),  # 11 steps
+#         labels=None,
+#         pos=(0, 0),
+#         size=(15, 2),
+#         units="deg",
+#         flip=True,
+#         style=['slider'],
+#         granularity=1,
+#         markerColor='green',
+#         font='Arial',
+#     )
+#     slider.marker.setSize((0.6, 2))
+#
+#     # Create label texts
+#     label_50 = visual.TextStim(win=win, text="50%", height=0.8, pos=(-9, 0), color='white')
+#     label_100 = visual.TextStim(win=win, text="100%", height=0.8, pos=(9, 0), color='white')
+#
+#     # Random initial position
+#     initial_pos = random.choice(slider.ticks)
+#     slider.markerPos = initial_pos
+#     confidence_start = slider_labels[initial_pos]
+#
+#     # Question & numeric text
+#     slider_question_text = visual.TextStim(
+#         win=win,
+#         text='How confident are you in your last response?',
+#         height=1,
+#         pos=(0, 5),
+#         color='white',
+#         bold=True,
+#         font='Arial',
+#         alignText='center',
+#         wrapWidth=30
+#     )
+#     slider_rating_txt = visual.TextStim(
+#         win=win,
+#         text=f"{confidence_start}%",
+#         height=0.8,
+#         pos=(0, 2),
+#         color='white',
+#         font='Arial',
+#     )
+#
+#     # Record timing & initial adjustment
+#     start_time = time.time()
+#     adjustments = [(confidence_start, 0.0)]  # (confidence_value, seconds_from_start)
+#
+#     if EEG_config is not None:
+#         EEG_config.send_trigger(EEG_config.triggers['confidence_rating_onset'])
+#
+#     kb.clearEvents()
+#
+#     # We'll keep track of which keys are currently held down
+#     keys_held = set()
+#
+#     # Track if the slider has *ever* moved at least once
+#     slider_moved = False
+#
+#     # Time-based gating to control how fast the marker moves while held
+#     move_interval = 0.15  # seconds between steps while holding
+#     last_move_time = 0
+#
+#     break_loop = False
+#
+#     while not break_loop:
+#         # 1) Get all key events that happened since the last frame
+#         key_events = kb.getKeys(keyList=[left_key, right_key, confirm_key],
+#                                 waitRelease=False, clear=False)
+#
+#         for evt in key_events:
+#             # If user pressed space, that might be our confirmation
+#             if evt.name == confirm_key:
+#                 # Only confirm if the slider was moved at least once
+#                 if evt.duration is None and slider_moved:
+#                     # user has pressed space => confirm
+#                     if EEG_config is not None:
+#                         EEG_config.send_trigger(EEG_config.triggers['confidence_response_made'])
+#                     slider.markerColor = 'darkgreen'
+#                     slider_rating_txt.color = 'darkgreen'
+#                     break_loop = True
+#                     break
+#                 # If slider wasn't moved yet, ignore this press
+#
+#             # If user pressed or released left_key
+#             elif evt.name == left_key:
+#                 if evt.duration is None:
+#                     # Key down event => track in keys_held
+#                     keys_held.add(left_key)
+#                 else:
+#                     # Key release
+#                     if left_key in keys_held:
+#                         keys_held.remove(left_key)
+#
+#             # If user pressed or released right_key
+#             elif evt.name == right_key:
+#                 if evt.duration is None:
+#                     keys_held.add(right_key)
+#                 else:
+#                     if right_key in keys_held:
+#                         keys_held.remove(right_key)
+#
+#         # 2) Now check if left_key or right_key is currently held
+#         now = time.time()
+#
+#         # Move left if enough time has passed and left_key is held
+#         if left_key in keys_held and (now - last_move_time > move_interval):
+#             if slider.markerPos > 0:
+#                 slider.markerPos -= 1
+#                 adj_time = round(now - start_time, 4)
+#                 adjustments.append((slider_labels[int(slider.markerPos)], adj_time))
+#                 slider_moved = True
+#                 if EEG_config is not None:
+#                     EEG_config.send_trigger(EEG_config.triggers['confidence_decrease'])
+#             last_move_time = now
+#
+#         # Move right if enough time has passed and right_key is held
+#         if right_key in keys_held and (now - last_move_time > move_interval):
+#             if slider.markerPos < 10:
+#                 slider.markerPos += 1
+#                 adj_time = round(now - start_time, 4)
+#                 adjustments.append((slider_labels[int(slider.markerPos)], adj_time))
+#                 slider_moved = True
+#                 if EEG_config is not None:
+#                     EEG_config.send_trigger(EEG_config.triggers['confidence_increase'])
+#             last_move_time = now
+#
+#         # 3) Update displayed rating, draw, flip
+#         slider_rating_txt.text = f"{slider_labels[int(slider.markerPos)]}%"
+#         slider.draw()
+#         label_50.draw()
+#         label_100.draw()
+#         slider_rating_txt.draw()
+#         slider_question_text.draw()
+#         win.flip()
+#
+#     # Done collecting response
+#     # Round the final response_time to 4 decimals
+#     response_time = round(time.time() - start_time, 4)
+#     final_rating = slider_labels[int(slider.markerPos)]
+#
+#     # Serialize adjustments (times are already rounded above)
+#     steps = [str(adj[0]) for adj in adjustments]
+#     times = [str(adj[1]) for adj in adjustments]
+#     adjustments_serialized = {
+#         "step_list": '|'.join(steps),
+#         "time_list": '|'.join(times)
+#     }
+#
+#     core.wait(0.7)
+#     return final_rating, response_time, confidence_start, adjustments_serialized
+#
+
+
 def get_confidence_rating(win, gv, EEG_config=None):
-    """
-    Displays a confidence rating Slider and allows press-and-hold movement
-    for left/right keys. The participant MUST move the slider at least once
-    before 'space' can confirm and end the rating.
-
-    Returns:
-      (final_rating, response_time, confidence_start, adjustments_serialized)
-
-    Times are rounded to 4 decimals.
-    """
-
     left_key, right_key = gv['response_keys']
     confirm_key = 'space'
 
-    # Create a Keyboard object without using waitRelease
     kb = keyboard.Keyboard()
-
-    # Prepare slider labels: positions 0..10 → 50..100%
     slider_labels = [50 + i * 5 for i in range(11)]
 
-    # Create the slider
     slider = visual.Slider(
         win=win,
-        ticks=list(range(11)),  # 11 steps
+        ticks=list(range(11)),
         labels=None,
         pos=(0, 0),
         size=(15, 2),
@@ -179,16 +340,14 @@ def get_confidence_rating(win, gv, EEG_config=None):
     )
     slider.marker.setSize((0.6, 2))
 
-    # Create label texts
     label_50 = visual.TextStim(win=win, text="50%", height=0.8, pos=(-9, 0), color='white')
     label_100 = visual.TextStim(win=win, text="100%", height=0.8, pos=(9, 0), color='white')
 
-    # Random initial position
-    initial_pos = random.choice(slider.ticks)
+    # Ensure the random starting position is within the middle half (positions 3, 4, 5, 6, 7)
+    initial_pos = random.choice(range(3, 8))  # Picks from 3, 4, 5, 6, 7 (avoids 0, 1, 2, 8, 9, 10)
     slider.markerPos = initial_pos
     confidence_start = slider_labels[initial_pos]
 
-    # Question & numeric text
     slider_question_text = visual.TextStim(
         win=win,
         text='How confident are you in your last response?',
@@ -209,101 +368,42 @@ def get_confidence_rating(win, gv, EEG_config=None):
         font='Arial',
     )
 
-    # Record timing & initial adjustment
     start_time = time.time()
-    adjustments = [(confidence_start, 0.0)]  # (confidence_value, seconds_from_start)
+    adjustments = [(confidence_start, 0.0)]
+    slider_moved = False
 
     if EEG_config is not None:
         EEG_config.send_trigger(EEG_config.triggers['confidence_rating_onset'])
 
     kb.clearEvents()
 
-    # We'll keep track of which keys are currently held down
-    keys_held = set()
-
-    # Track if the slider has *ever* moved at least once
-    slider_moved = False
-
-    # Time-based gating to control how fast the marker moves while held
-    move_interval = 0.15  # seconds between steps while holding
-    last_move_time = 0
-
-    break_loop = False
-
-    while not break_loop:
-        # Get key events (press + release) since last frame
-        key_events = kb.getKeys(
-            keyList=[left_key, right_key, confirm_key],
-            waitRelease=False,  # older PsychoPy versions require this
-            clear=False
-        )
-
-        # Keep track of which keys were "pressed" this frame to avoid multiple increments
-        pressed_this_frame = set()
+    while True:
+        key_events = kb.getKeys(keyList=[left_key, right_key, confirm_key], waitRelease=False)
 
         for evt in key_events:
-            # evt.duration is None => key is currently down
-            # evt.duration is not None => key has been released
             if evt.name == confirm_key:
-                # If user pressed space (duration==None), might confirm
-                if evt.duration is None:
-                    # Only confirm if slider was moved
-                    if slider_moved:
-                        if EEG_config is not None:
-                            EEG_config.send_trigger(EEG_config.triggers['confidence_response_made'])
-                        slider.markerColor = 'darkgreen'
-                        slider_rating_txt.color = 'darkgreen'
-                        break_loop = True
-                        break
-                    # else ignore the press if slider not moved
-
-            # -- LEFT KEY LOGIC --
-            elif evt.name == left_key:
-                if evt.duration is None:  # Key down
-                    # If we haven't already processed a press for this key in this frame
-                    if left_key not in pressed_this_frame:
-                        keys_held.add(left_key)
-                        pressed_this_frame.add(left_key)
-                else:  # Key release
-                    if left_key in keys_held:
-                        keys_held.remove(left_key)
-
-            # -- RIGHT KEY LOGIC --
-            elif evt.name == right_key:
-                if evt.duration is None:  # Key down
-                    if right_key not in pressed_this_frame:
-                        keys_held.add(right_key)
-                        pressed_this_frame.add(right_key)
-                else:  # Key release
-                    if right_key in keys_held:
-                        keys_held.remove(right_key)
-
-        # Check if left_key or right_key is held for continuous movement
-        now = time.time()
-
-        # Move left if enough time has passed and left_key is held
-        if left_key in keys_held and (now - last_move_time > move_interval):
-            if slider.markerPos > 0:
+                if slider_moved:
+                    if EEG_config is not None:
+                        EEG_config.send_trigger(EEG_config.triggers['confidence_response_made'])
+                    slider.markerColor = 'darkgreen'
+                    slider_rating_txt.color = 'darkgreen'
+                    break_loop = True
+                    break
+            elif evt.name == left_key and slider.markerPos > 0:
                 slider.markerPos -= 1
-                adj_time = round(now - start_time, 4)
+                adj_time = round(time.time() - start_time, 4)
                 adjustments.append((slider_labels[int(slider.markerPos)], adj_time))
                 slider_moved = True
                 if EEG_config is not None:
                     EEG_config.send_trigger(EEG_config.triggers['confidence_decrease'])
-            last_move_time = now
-
-        # Move right if enough time has passed and right_key is held
-        if right_key in keys_held and (now - last_move_time > move_interval):
-            if slider.markerPos < 10:
+            elif evt.name == right_key and slider.markerPos < 10:
                 slider.markerPos += 1
-                adj_time = round(now - start_time, 4)
+                adj_time = round(time.time() - start_time, 4)
                 adjustments.append((slider_labels[int(slider.markerPos)], adj_time))
                 slider_moved = True
                 if EEG_config is not None:
                     EEG_config.send_trigger(EEG_config.triggers['confidence_increase'])
-            last_move_time = now
 
-        # Update displayed rating, draw, flip
         slider_rating_txt.text = f"{slider_labels[int(slider.markerPos)]}%"
         slider.draw()
         label_50.draw()
@@ -312,20 +412,16 @@ def get_confidence_rating(win, gv, EEG_config=None):
         slider_question_text.draw()
         win.flip()
 
-    # Done collecting response
-    # Round the final response_time to 4 decimals
+        if 'break_loop' in locals():
+            break
+
     response_time = round(time.time() - start_time, 4)
     final_rating = slider_labels[int(slider.markerPos)]
 
-    # Serialize adjustments (times are already rounded above)
-    steps = [str(adj[0]) for adj in adjustments]
-    times = [str(adj[1]) for adj in adjustments]
     adjustments_serialized = {
-        "step_list": '|'.join(steps),
-        "time_list": '|'.join(times)
+        "step_list": '|'.join(str(adj[0]) for adj in adjustments),
+        "time_list": '|'.join(str(adj[1]) for adj in adjustments)
     }
 
     core.wait(0.7)
     return final_rating, response_time, confidence_start, adjustments_serialized
-
-
